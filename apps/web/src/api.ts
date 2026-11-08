@@ -1,0 +1,77 @@
+import type { CallRow, Employee, Page, PairingCodeResponse } from '@reaplift/calls-shared';
+
+export interface User {
+  id: string;
+  name: string;
+  email: string;
+  role: 'admin' | 'manager';
+}
+
+export class ApiError extends Error {
+  constructor(
+    public status: number,
+    public code: string,
+    message: string,
+  ) {
+    super(message);
+  }
+}
+
+/** Every call to the server goes through here: cookie included, errors turned into ApiError. */
+async function request<T>(method: string, url: string, body?: unknown): Promise<T> {
+  const res = await fetch(url, {
+    method,
+    credentials: 'include',
+    headers: body === undefined ? {} : { 'content-type': 'application/json' },
+    body: body === undefined ? undefined : JSON.stringify(body),
+  });
+  if (res.status === 204) return undefined as T;
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new ApiError(res.status, data.error ?? 'INTERNAL', data.message ?? 'Something went wrong');
+  return data as T;
+}
+
+export interface CallQuery {
+  from: string;
+  to: string;
+  employeeIds?: string;
+  types?: string;
+  minTalk?: string;
+  maxTalk?: string;
+  minRing?: string;
+  maxRing?: string;
+  numbers?: string;
+  cursor?: string;
+}
+
+export interface ReportSummary {
+  from: string;
+  to: string;
+  totalCalls: number;
+  incomingCalls: number;
+  outgoingCalls: number;
+  missedCalls: number;
+  rejectedCalls: number;
+  connectedCalls: number;
+  talkSeconds: number;
+  uniqueNumbers: number;
+  employeeCount: number;
+}
+
+export const callQueryString = (q: CallQuery) =>
+  new URLSearchParams(Object.entries(q).filter(([, v]) => v !== undefined && v !== '') as [string, string][]).toString();
+
+export const api = {
+  me: () => request<{ user: User }>('GET', '/api/auth/me'),
+  login: (email: string, password: string) => request<{ user: User }>('POST', '/api/auth/login', { email, password }),
+  logout: () => request<void>('POST', '/api/auth/logout'),
+  employees: () => request<{ items: Employee[] }>('GET', '/api/employees'),
+  addEmployee: (body: { name: string; empCode?: string; companyNumber: string }) =>
+    request<Employee>('POST', '/api/employees', body),
+  updateEmployee: (id: string, body: Partial<{ name: string; companyNumber: string; status: 'active' | 'left' }>) =>
+    request<Employee>('PATCH', `/api/employees/${id}`, body),
+  pairingCode: (id: string) => request<PairingCodeResponse>('POST', `/api/employees/${id}/pairing-code`),
+  revokeDevice: (id: string) => request<void>('POST', `/api/employees/${id}/revoke-device`),
+  calls: (q: CallQuery) => request<Page<CallRow>>('GET', `/api/calls?${callQueryString(q)}`),
+  reportSummary: (q: CallQuery) => request<ReportSummary>('GET', `/api/reports/summary?${callQueryString(q)}`),
+};

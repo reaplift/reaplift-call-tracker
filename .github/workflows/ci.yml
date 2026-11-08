@@ -1,0 +1,51 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  server_and_panel:
+    name: server and panel
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: calls
+          POSTGRES_PASSWORD: calls
+          POSTGRES_DB: calls
+        ports: ['5433:5432']
+        options: >-
+          --health-cmd "pg_isready -U calls" --health-interval 2s --health-retries 30
+    env:
+      DATABASE_URL: postgres://calls:calls@localhost:5433/calls
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm lint
+      - run: pnpm typecheck
+      - run: pnpm test
+      - run: pnpm test:int
+      - run: pnpm build
+
+  android:
+    name: android app
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/android
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: gradle/actions/setup-gradle@v4
+      - run: ./gradlew assembleDebug test lint --console=plain
