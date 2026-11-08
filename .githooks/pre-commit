@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_root="$(git rev-parse --show-toplevel)"
+cd "$repo_root"
+
+if ! git diff --cached --check; then
+  echo "ERROR: whitespace or conflicted patch markers detected. Fix them before committing."
+  git diff --cached --check
+  exit 1
+fi
+
+staged_files="$(git diff --cached --name-only --diff-filter=ACMR)"
+if echo "$staged_files" | grep -Eq '(^|/)(\.env|\.env\..*|.*\.pem|.*\.key|.*\.crt)$'; then
+  echo "ERROR: secrets or environment files are staged. Never commit them."
+  exit 1
+fi
+
+echo "Running project lint before commit..."
+pnpm lint

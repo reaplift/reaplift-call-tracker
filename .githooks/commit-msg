@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+msg_file="$1"
+commit_msg="$(head -n 1 "$msg_file")"
+
+pattern='^(feat|fix|docs|chore|refactor|test|ci|build|revert|m[0-9]+)(\([a-z0-9-]+\))?!?: .+'
+
+if ! [[ "$commit_msg" =~ $pattern ]]; then
+  echo "ERROR: commit message must follow the tracker policy."
+  echo "Examples: feat(server): add pairing validation"
+  echo "          m1: update privacy rule and setup flow"
+  exit 1
+fi

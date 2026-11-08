@@ -194,12 +194,14 @@ export function registerReportsRoutes(app: FastifyInstance, deps: { db: Kysely<D
   });
 
   app.get('/api/reports/summary', async (req, reply) => {
-    const filter = readFilter(req.query);
+    const query = (req.query ?? {}) as Record<string, unknown>;
+    const filter = readFilter(query);
     if (filter instanceof FilterError) return sendError(reply, 400, filter.code, filter.message);
     const managerScope = req.auth?.role === 'manager' ? await visibleEmployeeIds(db, req.auth.userId) : [];
     const scoped = req.auth?.role === 'manager' ? applyManagerScope(filter, managerScope) : filter;
     const scopeSql = req.auth?.role === 'manager' && managerScope.length ? sql`and c.employee_id = any(${managerScope}::uuid[])` : sql``;
-    const excludedSql = req.query.includeExcluded === 'true' || req.query.includeExcluded === true ? sql`` : sql`and not exists (select 1 from excluded_numbers ex where ex.number = c.number)`;
+    const includeExcluded = query.includeExcluded;
+    const excludedSql = includeExcluded === 'true' || includeExcluded === true ? sql`` : sql`and not exists (select 1 from excluded_numbers ex where ex.number = c.number)`;
     const rows = (
       await sql<{ total_calls: number; incoming_calls: number; outgoing_calls: number; missed_calls: number; rejected_calls: number; connected_calls: number; talk_seconds: number; unique_numbers: number; employee_count: number }>`
         select
@@ -233,12 +235,14 @@ export function registerReportsRoutes(app: FastifyInstance, deps: { db: Kysely<D
   });
 
   app.get('/api/reports/employees', async (req, reply) => {
-    const filter = readFilter(req.query);
+    const query = (req.query ?? {}) as Record<string, unknown>;
+    const filter = readFilter(query);
     if (filter instanceof FilterError) return sendError(reply, 400, filter.code, filter.message);
     const managerScope = req.auth?.role === 'manager' ? await visibleEmployeeIds(db, req.auth.userId) : [];
     const scoped = req.auth?.role === 'manager' ? applyManagerScope(filter, managerScope) : filter;
     const scopeSql = req.auth?.role === 'manager' && managerScope.length ? sql`and c.employee_id = any(${managerScope}::uuid[])` : sql``;
-    const excludedSql = req.query.includeExcluded === 'true' || req.query.includeExcluded === true ? sql`` : sql`and not exists (select 1 from excluded_numbers ex where ex.number = c.number)`;
+    const includeExcluded = query.includeExcluded;
+    const excludedSql = includeExcluded === 'true' || includeExcluded === true ? sql`` : sql`and not exists (select 1 from excluded_numbers ex where ex.number = c.number)`;
     const rows = (
       await sql<{ employee_id: string; employee_name: string; total_calls: number; talk_seconds: number; unique_numbers: number; connected_calls: number }>`
         select

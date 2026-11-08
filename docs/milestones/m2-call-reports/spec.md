@@ -32,22 +32,22 @@ Teams: **North** (Ravi, Asha; manager `vikram@reaplift.com`) and **South** (Imra
 
 Monday's company-SIM calls:
 
-| Employee | Time | Number | Type | Ring | Talk |
-| --- | --- | --- | --- | --- | --- |
-| Ravi | 10:00 | 919900011111 | outgoing | 10 | 300 |
-| Ravi | 10:20 | 918800022222 | outgoing | 30 | 0 |
-| Ravi | 11:00 | 917700033333 | missed | 20 | 0 |
-| Ravi | 16:00 | 917700033333 | outgoing | 8 | 120 |
-| Ravi | 17:00 | 914040001000 | incoming | 5 | 60 |
-| Asha | 21:30 | 919900044444 | incoming | 6 | 240 |
-| Asha | 21:45 | 916600055555 | missed | 15 | 0 |
-| Imran | 09:00 | 919900066666 | outgoing | 12 | 600 |
+| Employee | Time | Number | Type | Ring | Talk | Meaning |
+| --- | --- | --- | --- | --- | --- | --- |
+| Ravi | 10:00 | 919900011111 | outgoing | 10 | 300 | connected |
+| Ravi | 10:20 | 918800022222 | outgoing | 30 | 0 | voicemail or no answer |
+| Ravi | 11:00 | 917700033333 | missed | 20 | 0 | missed inbound call |
+| Ravi | 16:00 | 917700033333 | outgoing | 8 | 120 | connected follow-up |
+| Ravi | 17:00 | 914040001000 | incoming | 5 | 60 | internal office line; excluded |
+| Asha | 21:30 | 919900044444 | incoming | 6 | 240 | connected |
+| Asha | 21:45 | 916600055555 | missed | 15 | 0 | missed outbound / no answer |
+| Imran | 09:00 | 919900066666 | outgoing | 12 | 600 | connected |
 
 Expected for Monday, team North, excluded numbers left out:
 
-- Summary: 6 calls (Ravi 4, Asha 2; Ravi's 17:00 call to the office line is excluded); outgoing 3, incoming 1, missed 2; connected 3; talk 660 s; unique numbers 5.
+- Summary: 6 calls (Ravi 4, Asha 2; Ravi's 17:00 call to the office line is excluded); outgoing 3, incoming 1, missed 2; connected 3; talk 660 s; unique numbers 5. The 10:20 call to `918800022222` is counted as an attempt but not connected; it is included in the total attempt count and the outbound-no-answer bucket.
 - Never attended: `916600055555` (Asha's missed call, never connected after). Not `917700033333`, because Ravi called back at 16:00 and talked.
-- Not picked up: `918800022222`.
+- Not picked up: `918800022222`. This call is still an attempt even though talk time is 0 and it likely went to voicemail or no answer.
 - Ravi's active time: 10:00 to 16:02:08 (16:00 + 8 s ring + 120 s talk) = 6 h 2 min 8 s. Idle time = active − (10+300+30+0+20+0+8+120 = 488 s).
 - Asha's active time starts 21:30, showing calls outside office hours are counted (there are no working hours).
 - Hourly: the 21:00 slot has 2 calls; 10:00 has 2; 11:00 has 1; 16:00 has 1.

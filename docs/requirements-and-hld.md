@@ -72,12 +72,13 @@ Fixed here once; the panel, the API, the daily email and the tests all use these
 
 | Term | Definition |
 | --- | --- |
-| Incoming, outgoing, missed, rejected | From the phone's call log type. Blocked calls count as rejected. Voicemail is ignored. |
-| Talk time (`duration`) | Seconds connected, from the call log |
+| Incoming, outgoing, missed, rejected | From the phone's call log type. Blocked calls count as rejected. Voicemail and no-answer events remain valid calls, and they are counted as attempts even when talk time is short or zero. |
+| Talk time (`duration`) | Seconds connected, from the call log. For voicemail or no-answer events it may be a few seconds, but it is not treated as a live conversation. |
 | Ringing time | Seconds from the call starting (ringing or dialling) to it being answered or ending, measured by the app (section 8.3) |
-| Connected call | Talk time above 0 |
+| Connected call | A live call where the other side answered and talk time is above 0; voicemail and no-answer events are not connected calls. |
+| Attempt | Any valid company-SIM work call event, including outgoing calls that ended in voicemail, no answer, or a very short recording. |
 | Unique clients | Distinct outside numbers in the period |
-| Never attended | An outside number with a missed or rejected call in the period, and no connected call with it after that call within the period |
+| Never attended | An outside number with a missed or rejected call in the period, and no connected call with it after that call within the period. A voicemail/no-answer event still counts as an attempt but not as a connected call. |
 | Not picked up by client | An outside number with an outgoing call of 0 talk time in the period, and no connected call with it after that call within the period |
 | Active time (shown as "working hours") | Per employee per India day: from the start of the first call to the end of the last call. There are no office hours (owner, 7 November 2026). |
 | Idle time | Active time minus the time spent in calls (talk plus ringing) |

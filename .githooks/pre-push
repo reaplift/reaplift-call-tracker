@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_root="$(git rev-parse --show-toplevel)"
+cd "$repo_root"
+
+echo "Running tracker checks before push..."
+pnpm lint
+pnpm typecheck
+pnpm test
+
+echo "If Android files changed, run: cd apps/android && ./gradlew test lint --console=plain"
