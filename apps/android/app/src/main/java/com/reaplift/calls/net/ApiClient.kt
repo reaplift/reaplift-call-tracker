@@ -1,8 +1,11 @@
 package com.reaplift.calls.net
 
 import com.reaplift.calls.sync.CallUploader
+import com.reaplift.calls.sync.CommentResult
+import com.reaplift.calls.sync.CommentUploader
 import com.reaplift.calls.sync.DeviceRevokedException
 import com.reaplift.calls.sync.OutgoingCall
+import com.reaplift.calls.sync.PendingComment
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
@@ -37,7 +40,26 @@ data class PairedEmployee(val name: String, val companyNumber: String)
 data class DeviceSettings(val initialSyncDays: Int, val syncIntervalMinutes: Int)
 
 @Serializable
-data class PairResponse(val deviceToken: String, val employee: PairedEmployee, val settings: DeviceSettings)
+data class PairedCompany(val name: String)
+
+@Serializable
+data class PairResponse(
+    val deviceToken: String,
+    val employee: PairedEmployee,
+    /** Missing from servers before P1. */
+    val company: PairedCompany? = null,
+    val settings: DeviceSettings,
+)
+
+@Serializable
+data class OutcomeJson(val id: String, val label: String)
+
+/** `/device/v1/config` (M4 adds the company's outcomes for the after-call form). */
+@Serializable
+data class DeviceConfig(val settings: DeviceSettings, val outcomes: List<OutcomeJson> = emptyList())
+
+@Serializable
+data class CommentJson(val outcomeId: String?, val note: String?, val followUpAt: String?)
 
 @Serializable
 data class CallJson(
@@ -83,7 +105,7 @@ class ApiClient(
     private val serverUrl: String,
     private val token: String? = null,
     private val client: OkHttpClient = OkHttpClient.Builder().callTimeout(30, TimeUnit.SECONDS).build(),
-) : CallUploader {
+) : CallUploader, CommentUploader {
     private val base = serverUrl.trimEnd('/')
     private val jsonType = "application/json".toMediaType()
 
@@ -111,4 +133,23 @@ class ApiClient(
 
     override suspend fun upload(calls: List<OutgoingCall>): Set<String> =
         postCalls(calls).rejected.map { it.deviceCallId }.toSet()
+
+    suspend fun config(): DeviceConfig = call("GET", "/device/v1/config", null) { json.decodeFromString(it) }
+
+    override suspend fun sendComment(comment: PendingComment): CommentResult {
+        val body = CommentJson(
+            outcomeId = comment.outcomeId,
+            note = comment.note?.takeIf { it.isNotBlank() },
+            followUpAt = comment.followUpAtMs?.let { Instant.ofEpochMilli(it).toString() },
+        )
+        return try {
+            call("PATCH", "/device/v1/calls/${comment.deviceCallId}/comment", json.encodeToString(body)) { CommentResult.Sent }
+        } catch (e: ApiException) {
+            when {
+                e.code == "CALL_NOT_SYNCED" -> CommentResult.NotSyncedYet
+                e.status in 400..499 -> CommentResult.Refused(e.message ?: e.code)
+                else -> throw e
+            }
+        }
+    }
 }

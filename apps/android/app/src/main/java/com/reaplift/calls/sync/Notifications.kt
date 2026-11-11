@@ -17,6 +17,9 @@ import com.reaplift.calls.ui.MainActivity
 object Notifications {
     const val TRACKING_CHANNEL = "tracking"
     private const val ALERTS_CHANNEL = "alerts"
+    private const val AFTER_CALL_CHANNEL = "after_call"
+    /** The extra MainActivity reads to open the after-call form for one call. */
+    const val EXTRA_COMMENT_CALL = "comment_call_id"
     const val TRACKING_ID = 1
     private const val ALERT_ID = 2
 
@@ -28,7 +31,46 @@ object Notifications {
         manager.createNotificationChannel(
             NotificationChannel(ALERTS_CHANNEL, "Problems with call tracking", NotificationManager.IMPORTANCE_DEFAULT),
         )
+        // High, so it shows on top of the screen right after the call: Android does not let apps open a screen by themselves.
+        manager.createNotificationChannel(
+            NotificationChannel(AFTER_CALL_CHANNEL, "After a work call", NotificationManager.IMPORTANCE_HIGH),
+        )
     }
+
+    private fun commentId(deviceCallId: String) = 1_000 + (deviceCallId.hashCode() and 0xFFFF)
+
+    /** "How did the call go?" for one company-SIM call; tapping it opens the after-call form (M4). */
+    fun askForComment(context: Context, call: OutgoingCall, who: String) {
+        if (android.os.Build.VERSION.SDK_INT >= 33 &&
+            context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+        ) return
+        val id = commentId(call.deviceCallId)
+        val open = PendingIntent.getActivity(
+            context,
+            id,
+            Intent(context, MainActivity::class.java)
+                .putExtra(EXTRA_COMMENT_CALL, call.deviceCallId)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP),
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+        )
+        val text = "${call.type.replaceFirstChar { it.uppercase() }} call with $who. Tap to add the outcome and a comment."
+        NotificationManagerCompat.from(context).notify(
+            id,
+            NotificationCompat.Builder(context, AFTER_CALL_CHANNEL)
+                .setSmallIcon(R.drawable.ic_notification)
+                .setContentTitle("How did the call go?")
+                .setContentText(text)
+                .setStyle(NotificationCompat.BigTextStyle().bigText(text))
+                .setPriority(NotificationCompat.PRIORITY_HIGH)
+                .setCategory(NotificationCompat.CATEGORY_REMINDER)
+                .setContentIntent(open)
+                .setAutoCancel(true)
+                .build(),
+        )
+    }
+
+    fun cancelComment(context: Context, deviceCallId: String) =
+        NotificationManagerCompat.from(context).cancel(commentId(deviceCallId))
 
     private fun openApp(context: Context) = PendingIntent.getActivity(
         context,

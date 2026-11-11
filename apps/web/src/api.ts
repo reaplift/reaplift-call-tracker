@@ -4,7 +4,9 @@ export interface User {
   id: string;
   name: string;
   email: string;
-  role: 'admin' | 'manager';
+  role: 'super_admin' | 'admin' | 'manager';
+  companyId: number | null;
+  companyName: string | null;
 }
 
 export class ApiError extends Error {
@@ -41,6 +43,8 @@ export interface CallQuery {
   minRing?: string;
   maxRing?: string;
   numbers?: string;
+  /** `no`: placed or answered calls waiting for the after-call form (M4); `yes`: calls with one. */
+  commented?: string;
   cursor?: string;
 }
 

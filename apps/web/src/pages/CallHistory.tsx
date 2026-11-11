@@ -15,6 +15,8 @@ interface Filters {
   minRing: string;
   maxRing: string;
   number: string;
+  /** After-call form (M4): '' all, 'no' waiting for a comment, 'yes' with one. */
+  commented?: string;
 }
 
 /** The filters as the server's call filter: the "to" day is included, so the range ends at the next midnight. */
@@ -30,6 +32,7 @@ export function toQuery(f: Filters): CallQuery {
     minRing: f.minRing,
     maxRing: f.maxRing,
     numbers: f.number,
+    commented: f.commented,
   };
 }
 
@@ -45,6 +48,7 @@ export function CallHistory() {
     minRing: '',
     maxRing: '',
     number: '',
+    commented: '',
   });
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [rows, setRows] = useState<CallRow[]>([]);
@@ -130,6 +134,14 @@ export function CallHistory() {
           Number
           <input value={filters.number} onChange={set('number')} placeholder="99000 11111" />
         </label>
+        <label>
+          Comment
+          <select value={filters.commented ?? ''} onChange={set('commented')}>
+            <option value="">All calls</option>
+            <option value="no">Waiting for a comment</option>
+            <option value="yes">Has a comment</option>
+          </select>
+        </label>
         <a className="button secondary" href={`/api/calls/export.csv?${callQueryString(toQuery(filters))}`}>
           Download CSV
         </a>
@@ -144,6 +156,7 @@ export function CallHistory() {
             <th>Type</th>
             <th>Talk</th>
             <th>Ring</th>
+            <th>Outcome and comment</th>
           </tr>
         </thead>
         <tbody>
@@ -160,6 +173,12 @@ export function CallHistory() {
               </td>
               <td>{formatSeconds(c.talkSeconds)}</td>
               <td>{formatSeconds(c.ringSeconds)}</td>
+              <td>
+                {c.outcome && <strong>{c.outcome}</strong>}
+                {c.note && <div>{c.note}</div>}
+                {c.followUpAt && <div className="muted">Follow up {formatDateTime(c.followUpAt)}</div>}
+                {!c.commentedAt && (c.type === 'incoming' || c.type === 'outgoing') && <span className="muted">No comment yet</span>}
+              </td>
             </tr>
           ))}
         </tbody>

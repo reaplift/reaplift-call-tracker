@@ -44,6 +44,11 @@ class Prefs(context: Context) {
         get() = prefs.getString("employee_name", null)
         set(v) = prefs.edit { putString("employee_name", v) }
 
+    /** The company the phone is paired to (P1); null for phones paired before servers sent it. */
+    var companyName: String?
+        get() = prefs.getString("company_name", null)
+        set(v) = prefs.edit { putString("company_name", v) }
+
     var companyNumber: String?
         get() = prefs.getString("company_number", null)
         set(v) = prefs.edit { putString("company_number", v) }
@@ -78,7 +83,7 @@ class Prefs(context: Context) {
     /** After the server unpairs this phone: forget the pairing, keep consent and the chosen SIM. */
     fun clearPairing() {
         prefs.edit {
-            remove("device_token"); remove("paired_at"); remove("employee_name"); remove("company_number")
+            remove("device_token"); remove("paired_at"); remove("employee_name"); remove("company_number"); remove("company_name")
             remove("last_call_log_id"); remove("test_call_done"); remove("last_sync_at")
             putString("state", TrackingState.ON.name)
         }

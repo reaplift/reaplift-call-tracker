@@ -7,6 +7,7 @@ import com.reaplift.calls.data.LocalDb
 import com.reaplift.calls.data.Prefs
 import com.reaplift.calls.data.TrackingState
 import com.reaplift.calls.net.ApiClient
+import com.reaplift.calls.ui.formatNumber
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
@@ -39,7 +40,21 @@ object Tracking {
         val since = prefs.pairedAt - prefs.initialSyncDays * 86_400_000L
         prefs.lastCallLogId = sync.collect(prefs.lastCallLogId, since, matcher)
 
-        val result = sync.send(ApiClient(prefs.serverUrl!!, prefs.deviceToken), System::currentTimeMillis)
+        // After-call form (M4): ask about each new placed or answered call once, straight away, even offline.
+        for (call in db.takeCallsToPrompt(prefs.pairedAt, System.currentTimeMillis())) {
+            Notifications.askForComment(context, call, call.contactName ?: formatNumber(call.number))
+        }
+
+        val api = ApiClient(prefs.serverUrl!!, prefs.deviceToken)
+        var result = sync.send(api, System::currentTimeMillis)
+        // Comments go after the calls they belong to.
+        if (result is SendResult.Done) {
+            val comments = CommentSync(db).send(api, System::currentTimeMillis)
+            if (comments !is SendResult.Done) result = comments
+        }
+        if (result is SendResult.Done) {
+            runCatching { api.config() }.onSuccess { config -> db.replaceOutcomes(config.outcomes.map { Outcome(it.id, it.label) }) }
+        }
         when (result) {
             is SendResult.Done -> prefs.lastSyncAt = System.currentTimeMillis()
             SendResult.Revoked -> setState(context, prefs, TrackingState.REVOKED)

@@ -25,6 +25,10 @@ interface Row {
   talk_seconds: number;
   ring_seconds: number | null;
   synced_at: Date;
+  outcome: string | null;
+  note: string | null;
+  follow_up_at: Date | null;
+  commented_at: Date | null;
 }
 
 const toCallRow = (r: Row): CallRow => ({
@@ -39,6 +43,10 @@ const toCallRow = (r: Row): CallRow => ({
   talkSeconds: r.talk_seconds,
   ringSeconds: r.ring_seconds,
   syncedAt: r.synced_at.toISOString(),
+  outcome: r.outcome,
+  note: r.note,
+  followUpAt: r.follow_up_at?.toISOString() ?? null,
+  commentedAt: r.commented_at?.toISOString() ?? null,
 });
 
 /** Newest first. The cursor is the last row's start time and ID, so a page never repeats or skips a call. */
@@ -55,8 +63,10 @@ function decodeCursor(cursor: string | undefined): { startedAt: Date; id: number
 
 const SELECT = sql`
   select c.id, c.employee_id, e.name as employee_name, c.number, c.number_kind, c.contact_name, c.type,
-         c.started_at, c.talk_seconds, c.ring_seconds, c.synced_at
+         c.started_at, c.talk_seconds, c.ring_seconds, c.synced_at,
+         o.label as outcome, c.note, c.follow_up_at, c.commented_at
   from calls c join employees e on e.id = c.employee_id and e.company_id = c.company_id
+  left join call_outcomes o on o.id = c.outcome_id and o.company_id = c.company_id
 `;
 
 export function registerCallRoutes(app: FastifyInstance, deps: { db: Kysely<Database>; now: () => Date }) {
@@ -103,7 +113,10 @@ export function registerCallRoutes(app: FastifyInstance, deps: { db: Kysely<Data
         ${SELECT} where ${scopeSql(req.scope!)} and ${filterSql(filter)} order by c.started_at desc, c.id desc limit ${CSV_MAX_ROWS}
       `.execute(db)
     ).rows;
-    let body = csvLine(['Date and time (IST)', 'Employee', 'Number', 'Contact', 'Type', 'Talk (s)', 'Ring (s)', 'Synced (IST)']);
+    let body = csvLine([
+      'Date and time (IST)', 'Employee', 'Number', 'Contact', 'Type', 'Talk (s)', 'Ring (s)', 'Synced (IST)',
+      'Outcome', 'Comment', 'Follow-up (IST)',
+    ]);
     for (const r of rows) {
       body += csvLine([
         formatIst(r.started_at),
@@ -114,6 +127,9 @@ export function registerCallRoutes(app: FastifyInstance, deps: { db: Kysely<Data
         r.talk_seconds,
         r.ring_seconds,
         formatIst(r.synced_at),
+        r.outcome,
+        r.note,
+        r.follow_up_at ? formatIst(r.follow_up_at) : '',
       ]);
     }
     return reply

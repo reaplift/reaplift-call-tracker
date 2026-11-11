@@ -18,6 +18,7 @@ import { sql } from 'kysely';
 import { loadConfig } from './config.js';
 import { createDb, createPool } from './lib/db.js';
 import { createUser, UserInputError, USER_ROLES, type UserRole } from './modules/auth/users.js';
+import { seedOutcomes } from './modules/outcomes/defaults.js';
 
 const DEV_PASSWORD = 'calls-dev-1';
 
@@ -69,6 +70,7 @@ async function main() {
         if (!Number.isSafeInteger(id) || id <= 0 || !f.name?.trim())
           throw new UserInputError('usage: create-company --id <CRM company number> --name <n>');
         await sql`insert into companies (id, name) values (${id}, ${f.name.trim()})`.execute(db);
+        await seedOutcomes(db, id);
         console.log(`created company ${id} ${f.name.trim()}`);
         break;
       }
@@ -94,6 +96,7 @@ async function main() {
       case 'seed-dev': {
         if (process.env.NODE_ENV === 'production') throw new UserInputError('seed-dev is for local development only');
         await sql`insert ignore into companies (id, name) values (1, 'ReapLift (dev)')`.execute(db);
+        await seedOutcomes(db, 1);
         for (const u of [
           { email: 'super@reaplift.local', name: 'ReapLift super admin', role: 'super_admin' as const, companyId: null },
           { email: 'admin@reaplift.local', name: 'Dev admin', role: 'admin' as const, companyId: 1 },

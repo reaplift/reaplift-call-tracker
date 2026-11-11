@@ -35,6 +35,7 @@ Used by `/api/calls`, `/api/reports/*`, the CSV export and `/v1/*`.
 | `minTalk`, `maxTalk` | seconds | Optional, inclusive |
 | `minRing`, `maxRing` | seconds | Optional, inclusive |
 | `numbers` | string[] | Outside numbers, normalised before matching |
+| `commented` | `yes`, `no` | `no`: placed or answered calls still waiting for the after-call form; `yes`: calls with one (M4) |
 | `includeExcluded` | boolean | Default false (M2) |
 | `hasRecording` | `yes`, `no`, `missing`, `pending` | M6 |
 
@@ -126,6 +127,8 @@ An employee has at most one active device; pairing a new phone revokes the old o
 | Table | Columns | Milestone |
 | --- | --- | --- |
 | `device_checkins` | `id bigint`, `device_id`, `at`, `battery_pct`, `battery_optimised bool`, `permissions jsonb`, `sim_present bool`, `pending_calls int`, `default_dialer`, `app_version` | M4 |
+| `call_outcomes` | `id`, `company_id`, `label` (unique per company), `sort_order`, `active`, `created_at`. Every company starts with Interested, Call back later, Not interested, No answer / busy, Wrong number, Other (migration 0004; new companies get them when created) | M4 (built 11 November 2026) |
+| `calls` (new columns) | `outcome_id null` (composite foreign key to the company's outcomes), `follow_up_at null`, `commented_at null`; the comment is `calls.note` | M4 (built 11 November 2026) |
 | `app_releases` | `id`, `version_code unique`, `version_name`, `sha256`, `file_key`, `min_supported_code`, `notes`, `published_at` | M4 |
 
 ### CRM integration (M5)
@@ -164,6 +167,7 @@ An employee has at most one active device; pairing a new phone revokes the old o
 | --- | --- | --- | --- |
 | POST | `/api/auth/login`, `/api/auth/logout` | anyone, logged in | M1 |
 | GET | `/api/auth/me` | logged in | M1 |
+| GET, POST | `/api/call-outcomes`; PATCH `/api/call-outcomes/:id` (label, sortOrder, active) | admin | M4 (built 11 November 2026) |
 | GET, POST | `/api/companies` | super admin | P1 |
 | PATCH | `/api/companies/:id` | super admin | P1 |
 | GET, POST | `/api/employees` | admin (managers read their teams' from M2) | M1 |
@@ -185,9 +189,9 @@ An employee has at most one active device; pairing a new phone revokes the old o
 | --- | --- | --- | --- |
 | POST | `/device/v1/pair` | Body: `{ code, brand, model, androidVersion, sdkInt, appVersion, defaultDialer, simSlot, simCarrier, phoneAccountId, consentVersion }`. No token needed. Returns `{ deviceToken, employee: { name, companyNumber }, settings }` | M1 |
 | POST | `/device/v1/calls` | Batch of up to 200 calls. Returns `{ accepted, duplicates }`. Idempotent on (`device`, `deviceCallId`) | M1 |
-| GET | `/device/v1/config` | Settings, latest app version | M1 (version from M4) |
+| GET | `/device/v1/config` | Settings, the company's active outcomes for the after-call form (built 11 November 2026), latest app version | M1 (outcomes and version from M4) |
 | POST | `/device/v1/checkin` | Health snapshot | M4 |
-| PATCH | `/device/v1/calls/:deviceCallId/note` | After-call form: outcome, comment, follow-up | M4 |
+| PATCH | `/device/v1/calls/:deviceCallId/comment` | After-call form `{ outcomeId, note, followUpAt }` (any may be null, but not both outcome and note). 404 `CALL_NOT_SYNCED` until the call has arrived; the phone keeps the comment and retries. Built 11 November 2026 | M4 |
 | POST | `/device/v1/call-requests` | Record that the app is about to place a call | M9 |
 | GET | `/device/v1/leads` | The employee's CRM leads to call | M9 |
 | POST | `/device/v1/recordings/upload-url` | `{ deviceCallId, sizeBytes, mimeType, audioSeconds, matchScore }` → `{ uploadUrl, expiresAt }` | M6 |
@@ -224,6 +228,9 @@ The same reports and history as the panel, in Callyzer's shape so the CRM gets e
 | `COMPANY_SUSPENDED` | 403 | The company is suspended; its devices stop syncing and its users cannot log in (P1) |
 | `COMPANY_AGREEMENT_MISSING` | 409 or 403 | No current company agreement: pairing code refused (409), device sync refused (403) (P1.8) |
 | `EMPLOYEE_POLICY_MISSING` | 409 | Pairing code asked for an employee without a recorded signed policy (P1.8) |
+| `CALL_NOT_SYNCED` | 404 | After-call form for a call the server does not have yet (M4) |
+| `OUTCOME_UNKNOWN` | 400 | Outcome switched off or from another company (M4) |
+| `OUTCOME_EXISTS` | 409 | An outcome with that label already exists in the company (M4) |
 | `CONSENT_REQUIRED` | 403 | Device syncing without consent to the company's current consent text (P1.8) |
 | `LOGIN_LOCKED` | 423 | Too many wrong passwords |
 | `RATE_LIMITED` | 429 | CRM API over its limit |

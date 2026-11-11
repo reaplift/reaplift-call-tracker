@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
@@ -45,15 +46,19 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.reaplift.calls.BuildConfig
+import com.reaplift.calls.data.LocalCall
 import com.reaplift.calls.data.LocalDb
 import com.reaplift.calls.data.Prefs
 import com.reaplift.calls.data.TrackingState
 import com.reaplift.calls.net.ApiClient
 import com.reaplift.calls.net.ApiException
 import com.reaplift.calls.net.PairRequest
+import com.reaplift.calls.sync.Notifications
+import com.reaplift.calls.sync.Outcome
 import com.reaplift.calls.sync.SimInfo
 import com.reaplift.calls.sync.Sims
 import com.reaplift.calls.sync.SyncWorker
@@ -79,13 +84,15 @@ fun currentStep(context: Context, prefs: Prefs): Step = when {
 }
 
 @Composable
-fun App(pairLink: PairLink?) {
+fun App(pairLink: PairLink?, commentCall: String? = null, onCommentClosed: () -> Unit = {}) {
     val context = LocalContext.current
     val prefs = remember { Prefs(context) }
     // Bumped after every step, so currentStep is read again.
     var version by remember { mutableIntStateOf(0) }
     val next: () -> Unit = { version++ }
     val step = remember(version) { currentStep(context, prefs) }
+    // A call picked from the home screen's list, or from the "How did the call go?" notification.
+    var commenting by remember(commentCall) { mutableStateOf(commentCall) }
 
     Column(
         // Android 15 draws apps under the status and navigation bars; keep text clear of them.
@@ -103,7 +110,14 @@ fun App(pairLink: PairLink?) {
             Step.SIM -> SimStep(prefs, next)
             Step.PAIR -> PairStep(prefs, pairLink, next)
             Step.TEST_CALL -> TestCallStep(prefs, next)
-            Step.HOME -> HomeScreen(prefs, onChanged = next)
+            Step.HOME -> {
+                val id = commenting
+                if (id != null) {
+                    CommentScreen(id, onDone = { commenting = null; onCommentClosed(); next() })
+                } else {
+                    HomeScreen(prefs, onChanged = next, onComment = { commenting = it })
+                }
+            }
         }
     }
 }
@@ -284,6 +298,7 @@ private fun PairStep(prefs: Prefs, link: PairLink?, onDone: () -> Unit) {
                     prefs.serverUrl = server.trimEnd('/')
                     prefs.deviceToken = response.deviceToken
                     prefs.employeeName = response.employee.name
+                    prefs.companyName = response.company?.name
                     prefs.companyNumber = response.employee.companyNumber
                     prefs.initialSyncDays = response.settings.initialSyncDays
                     prefs.lastCallLogId = 0
@@ -329,14 +344,15 @@ private fun TestCallStep(prefs: Prefs, onDone: () -> Unit) {
 }
 
 @Composable
-private fun HomeScreen(prefs: Prefs, onChanged: () -> Unit) {
+private fun HomeScreen(prefs: Prefs, onChanged: () -> Unit, onComment: (String) -> Unit) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var refresh by remember { mutableIntStateOf(0) }
     val db = remember { LocalDb(context) }
     val todayStart = remember(refresh) { startOfToday() }
-    val synced = remember(refresh) { db.sentSince(todayStart) }
+    val synced = remember(refresh) { db.sentSinceWithComments(todayStart) }
     val pending = remember(refresh) { db.pendingCount() }
+    val needComment = remember(refresh) { db.needsComment(todayStart - 6 * 86_400_000L) }
     LaunchedEffect(Unit) {
         while (true) {
             delay(30_000)
@@ -357,6 +373,7 @@ private fun HomeScreen(prefs: Prefs, onChanged: () -> Unit) {
             val on = prefs.state == TrackingState.ON
             Text(if (on) "Tracking is on" else "Tracking is paused", fontWeight = FontWeight.SemiBold, color = if (on) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error)
             Text("${prefs.employeeName} · company SIM ${prefs.companySimSlot + 1} (${prefs.companySimCarrier})")
+            prefs.companyName?.let { Text("Company: $it") }
             Text("Last sync: ${if (prefs.lastSyncAt > 0) formatTime(prefs.lastSyncAt) else "not yet"}")
             if (pending > 0) Text("$pending call(s) waiting to be sent")
             if (!prefs.testCallDone) Text("Test call not done yet", color = MaterialTheme.colorScheme.error)
@@ -373,18 +390,139 @@ private fun HomeScreen(prefs: Prefs, onChanged: () -> Unit) {
         }
     }, modifier = Modifier.fillMaxWidth()) { Text("Sync now") }
 
+    if (needComment.isNotEmpty()) {
+        Spacer(Modifier.height(4.dp))
+        Text("Needs a comment (${needComment.size})", fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.error)
+        Text("Your manager sees which calls have no outcome.", style = MaterialTheme.typography.bodySmall)
+        needComment.forEach { item ->
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text("${formatDay(item.call.startedAtMs)} ${formatTime(item.call.startedAtMs)} · ${item.call.type}")
+                    Text(item.call.contactName ?: formatNumber(item.call.number), style = MaterialTheme.typography.bodySmall)
+                }
+                TextButton(onClick = { onComment(item.call.deviceCallId) }) { Text("Add") }
+            }
+            HorizontalDivider()
+        }
+    }
+
     Spacer(Modifier.height(4.dp))
     Text("Sent today (what your managers see)", fontWeight = FontWeight.SemiBold)
     if (synced.isEmpty()) Text("No company-SIM calls sent today.", style = MaterialTheme.typography.bodySmall)
-    synced.forEach { call ->
+    synced.forEach { item ->
+        val call = item.call
         Column {
             Text("${formatTime(call.startedAtMs)} · ${call.type} · ${call.contactName ?: formatNumber(call.number)}")
             Text("Talk ${call.talkSeconds}s" + (call.ringSeconds?.let { " · rang ${it}s" } ?: ""), style = MaterialTheme.typography.bodySmall)
+            item.outcomeLabel?.let { Text("Outcome: $it", style = MaterialTheme.typography.bodySmall) }
+            item.note?.let { Text("“$it”", style = MaterialTheme.typography.bodySmall) }
         }
         HorizontalDivider()
     }
     Text("Version ${BuildConfig.VERSION_NAME}", style = MaterialTheme.typography.bodySmall)
 }
+
+/** The after-call form (M4): outcome, comment and follow-up for one company-SIM call. Saved on the phone, sent on the next sync. */
+@Composable
+private fun CommentScreen(deviceCallId: String, onDone: () -> Unit) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val db = remember { LocalDb(context) }
+    val item: LocalCall? = remember(deviceCallId) { db.find(deviceCallId) }
+    var outcomes by remember { mutableStateOf(db.outcomes()) }
+    var outcomeId by remember { mutableStateOf(item?.outcomeId) }
+    var note by remember { mutableStateOf(item?.note.orEmpty()) }
+    val followUps = remember { followUpChoices() }
+    var followUp by remember { mutableStateOf(item?.followUpAtMs) }
+
+    if (item == null) {
+        Title("Call not found")
+        Text("This call is no longer on the phone.")
+        Button(onClick = onDone, modifier = Modifier.fillMaxWidth()) { Text("Back") }
+        return
+    }
+    // A phone that has never synced since this update has no outcomes yet: fetch them once.
+    LaunchedEffect(Unit) {
+        if (outcomes.isEmpty()) {
+            Tracking.syncNow(context)
+            outcomes = db.outcomes()
+        }
+    }
+
+    val call = item.call
+    Title("How did the call go?")
+    Text("${formatDay(call.startedAtMs)} ${formatTime(call.startedAtMs)} · ${call.type} · ${call.contactName ?: formatNumber(call.number)}")
+    Text("Talk ${call.talkSeconds}s", style = MaterialTheme.typography.bodySmall)
+
+    Text("Outcome", fontWeight = FontWeight.SemiBold)
+    if (outcomes.isEmpty()) Text("Loading the choices… you can still write a comment.", style = MaterialTheme.typography.bodySmall)
+    // The whole row is the tap target: people tap the words, not the small circle.
+    outcomes.forEach { o ->
+        val selected = outcomeId == o.id
+        Row(
+            Modifier.fillMaxWidth().selectable(selected = selected, role = Role.RadioButton, onClick = { outcomeId = if (selected) null else o.id }),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            RadioButton(selected = selected, onClick = null)
+            Text(o.label)
+        }
+    }
+
+    OutlinedTextField(
+        value = note,
+        onValueChange = { if (it.length <= 1000) note = it },
+        label = { Text("Comment (optional)") },
+        modifier = Modifier.fillMaxWidth(),
+        minLines = 3,
+    )
+
+    Text("Follow up", fontWeight = FontWeight.SemiBold)
+    followUps.forEach { (label, at) ->
+        Row(
+            Modifier.fillMaxWidth().selectable(selected = followUp == at, role = Role.RadioButton, onClick = { followUp = at }),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            RadioButton(selected = followUp == at, onClick = null)
+            Text(label)
+        }
+    }
+
+    val canSave = outcomeId != null || note.isNotBlank()
+    Button(
+        enabled = canSave,
+        onClick = {
+            val outcome: Outcome? = outcomes.firstOrNull { it.id == outcomeId }
+            db.saveComment(call.deviceCallId, outcome, note.trim().ifBlank { null }, followUp, System.currentTimeMillis())
+            Notifications.cancelComment(context, call.deviceCallId)
+            scope.launch { Tracking.syncNow(context) }
+            onDone()
+        },
+        modifier = Modifier.fillMaxWidth(),
+    ) { Text("Save") }
+    TextButton(onClick = onDone, modifier = Modifier.fillMaxWidth()) { Text("Later") }
+}
+
+/** "None", tomorrow, in 3 days and next week, each at 10:00 on the phone's clock. */
+private fun followUpChoices(): List<Pair<String, Long?>> {
+    fun daysAhead(days: Int): Long {
+        val cal = java.util.Calendar.getInstance()
+        cal.add(java.util.Calendar.DAY_OF_YEAR, days)
+        cal.set(java.util.Calendar.HOUR_OF_DAY, 10)
+        cal.set(java.util.Calendar.MINUTE, 0)
+        cal.set(java.util.Calendar.SECOND, 0)
+        cal.set(java.util.Calendar.MILLISECOND, 0)
+        return cal.timeInMillis
+    }
+    val day = SimpleDateFormat("EEE d MMM", Locale.getDefault())
+    return listOf(
+        "No follow-up" to null,
+        "Tomorrow (${day.format(Date(daysAhead(1)))}, 10:00)" to daysAhead(1),
+        "In 3 days (${day.format(Date(daysAhead(3)))}, 10:00)" to daysAhead(3),
+        "Next week (${day.format(Date(daysAhead(7)))}, 10:00)" to daysAhead(7),
+    )
+}
+
+private fun formatDay(ms: Long) = SimpleDateFormat("d MMM", Locale.getDefault()).format(Date(ms))
 
 private fun startOfToday(): Long {
     val cal = java.util.Calendar.getInstance()

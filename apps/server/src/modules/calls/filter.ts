@@ -1,6 +1,6 @@
 import { sql, type RawBuilder } from 'kysely';
 import { z } from 'zod';
-import { CALL_TYPES } from '@reaplift/calls-shared';
+import { CALL_TYPES, COMMENT_EXPECTED_TYPES } from '@reaplift/calls-shared';
 import { normalizeNumber } from '../../lib/phone.js';
 import { startOfIstDay } from '../../lib/time.js';
 
@@ -25,6 +25,8 @@ const FilterQuery = z.object({
   minRing: seconds,
   maxRing: seconds,
   numbers: list(z.string().min(1)),
+  /** `no`: placed or answered calls still waiting for the after-call form (M4); `yes`: calls with one. */
+  commented: z.enum(['yes', 'no']).optional(),
 });
 
 export interface CallFilter {
@@ -37,6 +39,7 @@ export interface CallFilter {
   minRing?: number;
   maxRing?: number;
   numbers: string[];
+  commented?: 'yes' | 'no';
 }
 
 export class FilterError extends Error {
@@ -68,6 +71,7 @@ export function parseCallFilter(query: unknown, now: Date): CallFilter {
     minRing: q.minRing,
     maxRing: q.maxRing,
     numbers: q.numbers.map((n) => normalizeNumber(n).number).filter(Boolean),
+    commented: q.commented,
   };
 }
 
@@ -81,5 +85,8 @@ export function filterSql(f: CallFilter): RawBuilder<unknown> {
   if (f.minRing !== undefined) parts.push(sql`c.ring_seconds >= ${f.minRing}`);
   if (f.maxRing !== undefined) parts.push(sql`c.ring_seconds <= ${f.maxRing}`);
   if (f.numbers.length) parts.push(sql`c.number in (${sql.join(f.numbers)})`);
+  if (f.commented === 'yes') parts.push(sql`c.commented_at is not null`);
+  if (f.commented === 'no')
+    parts.push(sql`c.commented_at is null and c.type in (${sql.join([...COMMENT_EXPECTED_TYPES])})`);
   return sql.join(parts, sql` and `);
 }

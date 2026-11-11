@@ -1,10 +1,12 @@
 import type { FastifyInstance } from 'fastify';
 import { sql, type Kysely } from 'kysely';
 import {
+  CallComment,
   DeviceCallBatch,
   PairRequest,
   type DeviceCall,
   type DeviceCallBatchResult,
+  type DeviceConfig,
   type DeviceSettings,
   type PairResponse,
 } from '@reaplift/calls-shared';
@@ -99,7 +101,42 @@ export function registerDeviceRoutes(
     return reply.code(201).send(body);
   });
 
-  app.get('/device/v1/config', async (_req, reply) => reply.code(200).send({ settings }));
+  app.get('/device/v1/config', async (req, reply) => {
+    const outcomes = (
+      await sql<{ id: string; label: string }>`
+        select id, label from call_outcomes where company_id = ${req.device!.companyId} and active = 1 order by sort_order, label
+      `.execute(db)
+    ).rows;
+    const body: DeviceConfig = { settings, outcomes };
+    return reply.code(200).send(body);
+  });
+
+  /**
+   * The after-call form (M4). The call must already be synced; until then the phone keeps the comment and retries.
+   * Only this phone's own call can be commented, and only with its company's outcomes.
+   */
+  app.patch('/device/v1/calls/:deviceCallId/comment', async (req, reply) => {
+    const device = req.device!;
+    const { deviceCallId } = req.params as { deviceCallId: string };
+    const parsed = CallComment.safeParse(req.body);
+    if (!parsed.success) return sendError(reply, 400, 'INVALID_REQUEST', parsed.error.issues[0]?.message ?? 'Check the comment');
+    const c = parsed.data;
+    if (c.outcomeId) {
+      const outcome = (
+        await sql`select 1 from call_outcomes where company_id = ${device.companyId} and id = ${c.outcomeId} and active = 1`.execute(db)
+      ).rows[0];
+      if (!outcome) return sendError(reply, 400, 'OUTCOME_UNKNOWN', 'That outcome is not available; refresh and pick again');
+    }
+    const updated = await sql`
+      update calls set outcome_id = ${c.outcomeId}, note = ${c.note || null},
+             follow_up_at = ${c.followUpAt ? new Date(c.followUpAt) : null}, commented_at = ${now()}, updated_at = ${now()}
+      where device_id = ${device.deviceId} and device_call_id = ${deviceCallId}
+    `.execute(db);
+    if (Number(updated.numAffectedRows ?? 0) === 0)
+      return sendError(reply, 404, 'CALL_NOT_SYNCED', 'This call has not reached the server yet; the phone will send the comment again');
+    await audit(db, { companyId: device.companyId, deviceId: device.deviceId, action: 'call.commented', targetType: 'call', targetId: deviceCallId });
+    return reply.code(204).send();
+  });
 
   app.post('/device/v1/calls', async (req, reply) => {
     const parsed = DeviceCallBatch.safeParse(req.body);

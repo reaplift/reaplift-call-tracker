@@ -9,6 +9,7 @@ import { registerCompanyRoutes } from './modules/companies/routes.js';
 import { registerDeviceRoutes } from './modules/device/routes.js';
 import { registerEmployeeRoutes } from './modules/employees/routes.js';
 import { registerInstallRoutes } from './modules/install/routes.js';
+import { registerOutcomeRoutes } from './modules/outcomes/routes.js';
 import { registerReportsRoutes } from './modules/reports/routes.js';
 import { isPanelPath, PANEL_CSP, registerPanel } from './modules/panel/routes.js';
 
@@ -96,6 +97,7 @@ export function buildApp({
   registerDeviceRoutes(app, { db, now, settings: deviceSettings });
   registerCallRoutes(app, { db, now });
   registerReportsRoutes(app, { db, now });
+  registerOutcomeRoutes(app, { db });
   registerInstallRoutes(app, { db, now, publicBaseUrl, apkDir });
   if (panelDir) app.register((instance) => registerPanel(instance, panelDir));
 

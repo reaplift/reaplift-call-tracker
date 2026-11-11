@@ -132,6 +132,48 @@ export interface PairingCodeResponse {
   qrSvg: string;
 }
 
+/** Call types the after-call form asks about: calls that were placed or answered (M4). */
+export const COMMENT_EXPECTED_TYPES = ['incoming', 'outgoing'] as const;
+
+export interface CallOutcome {
+  id: string;
+  label: string;
+  sortOrder: number;
+  active: boolean;
+}
+
+export const CallOutcomeInput = z
+  .object({
+    label: z.string().trim().min(1).max(60),
+    sortOrder: z.number().int().min(0).max(1000).optional(),
+  })
+  .strict();
+
+export const CallOutcomePatch = z
+  .object({
+    label: z.string().trim().min(1).max(60).optional(),
+    sortOrder: z.number().int().min(0).max(1000).optional(),
+    active: z.boolean().optional(),
+  })
+  .strict();
+
+/** The after-call form, sent by the phone (PATCH /device/v1/calls/:deviceCallId/comment). */
+export const CallComment = z
+  .object({
+    outcomeId: z.string().uuid().nullable(),
+    note: z.string().trim().max(1000).nullable(),
+    followUpAt: z.string().datetime({ offset: true }).nullable(),
+  })
+  .strict()
+  .refine((c) => c.outcomeId !== null || (c.note ?? '') !== '', { message: 'Pick an outcome or write a comment' });
+export type CallComment = z.infer<typeof CallComment>;
+
+/** GET /device/v1/config: settings, and the company's active outcomes for the after-call form. */
+export interface DeviceConfig {
+  settings: DeviceSettings;
+  outcomes: Array<{ id: string; label: string }>;
+}
+
 export interface CallRow {
   id: number;
   employeeId: string;
@@ -144,6 +186,11 @@ export interface CallRow {
   talkSeconds: number;
   ringSeconds: number | null;
   syncedAt: string;
+  /** The after-call form (M4); all null until the employee fills it. */
+  outcome: string | null;
+  note: string | null;
+  followUpAt: string | null;
+  commentedAt: string | null;
 }
 
 export interface Page<T> {

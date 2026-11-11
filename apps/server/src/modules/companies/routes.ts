@@ -4,6 +4,7 @@ import { CompanyInput, CompanyPatch, type Company } from '@reaplift/calls-shared
 import { isUniqueViolation, type Database } from '../../lib/db.js';
 import { audit } from '../../lib/audit.js';
 import { sendError } from '../../lib/errors.js';
+import { seedOutcomes } from '../outcomes/defaults.js';
 
 interface Row {
   id: number;
@@ -29,6 +30,7 @@ export function registerCompanyRoutes(app: FastifyInstance, deps: { db: Kysely<D
     if (!parsed.success) return sendError(reply, 400, 'INVALID_REQUEST', "Send the CRM's company number as id, and a name");
     try {
       await sql`insert into companies (id, name) values (${parsed.data.id}, ${parsed.data.name})`.execute(db);
+      await seedOutcomes(db, parsed.data.id);
     } catch (err) {
       if (isUniqueViolation(err)) return sendError(reply, 409, 'COMPANY_EXISTS', `Company ${parsed.data.id} already exists`);
       throw err;

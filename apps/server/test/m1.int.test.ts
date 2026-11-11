@@ -249,7 +249,7 @@ describe('call sync and call history', () => {
     expect(res.headers['content-type']).toContain('text/csv');
     const lines = res.body.trim().split('\r\n');
     expect(lines).toHaveLength(5);
-    expect(lines[4]).toBe('"12/11/2026, 14:02:00",Ravi Kumar,919900011111,Sharma Traders,outgoing,185,12,"12/11/2026, 15:05:00"');
+    expect(lines[4]).toBe('"12/11/2026, 14:02:00",Ravi Kumar,919900011111,Sharma Traders,outgoing,185,12,"12/11/2026, 15:05:00",,,');
   });
 
   it('refuses a range over 180 days', async () => {
