@@ -52,8 +52,46 @@ export interface DeviceSettings {
 export interface PairResponse {
   deviceToken: string;
   employee: { name: string; companyNumber: string };
+  /** The company the phone is now paired to (P1), so the app can show it. */
+  company: { name: string };
   settings: DeviceSettings;
 }
+
+/** Panel roles (P1, D11): a super admin (ReapLift) picks a company; admins and managers belong to one. */
+export const USER_ROLES = ['super_admin', 'admin', 'manager'] as const;
+export type UserRole = (typeof USER_ROLES)[number];
+
+export interface SessionUserView {
+  id: string;
+  name: string;
+  email: string;
+  role: UserRole;
+  /** The user's company; for a super admin, the company picked in the panel, or null before picking one. */
+  companyId: number | null;
+  companyName: string | null;
+}
+
+export interface Company {
+  id: number;
+  name: string;
+  status: 'active' | 'suspended';
+  createdAt: string;
+}
+
+export const CompanyInput = z
+  .object({
+    /** The CRM's company number, so both systems name the company the same way. */
+    id: z.number().int().positive().max(4_294_967_295),
+    name: z.string().trim().min(1).max(200),
+  })
+  .strict();
+
+export const CompanyPatch = z
+  .object({
+    name: z.string().trim().min(1).max(200).optional(),
+    status: z.enum(['active', 'suspended']).optional(),
+  })
+  .strict();
 
 export interface Employee {
   id: string;

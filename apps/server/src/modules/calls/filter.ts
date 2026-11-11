@@ -71,15 +71,15 @@ export function parseCallFilter(query: unknown, now: Date): CallFilter {
   };
 }
 
-/** The filter as SQL conditions on `calls c`, joined with `and`. Bounds are inclusive. */
+/** The filter as SQL conditions on `calls c`, joined with `and`. Bounds are inclusive. Callers add `scopeSql` too. */
 export function filterSql(f: CallFilter): RawBuilder<unknown> {
   const parts: RawBuilder<unknown>[] = [sql`c.started_at >= ${f.from}`, sql`c.started_at < ${f.to}`];
-  if (f.employeeIds.length) parts.push(sql`c.employee_id = any(${f.employeeIds}::uuid[])`);
-  if (f.types.length) parts.push(sql`c.type = any(${f.types}::text[])`);
+  if (f.employeeIds.length) parts.push(sql`c.employee_id in (${sql.join(f.employeeIds)})`);
+  if (f.types.length) parts.push(sql`c.type in (${sql.join(f.types)})`);
   if (f.minTalk !== undefined) parts.push(sql`c.talk_seconds >= ${f.minTalk}`);
   if (f.maxTalk !== undefined) parts.push(sql`c.talk_seconds <= ${f.maxTalk}`);
   if (f.minRing !== undefined) parts.push(sql`c.ring_seconds >= ${f.minRing}`);
   if (f.maxRing !== undefined) parts.push(sql`c.ring_seconds <= ${f.maxRing}`);
-  if (f.numbers.length) parts.push(sql`c.number = any(${f.numbers}::text[])`);
+  if (f.numbers.length) parts.push(sql`c.number in (${sql.join(f.numbers)})`);
   return sql.join(parts, sql` and `);
 }

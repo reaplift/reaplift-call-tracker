@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { loadConfig } from '../src/config.js';
 
-const base = { DATABASE_URL: 'postgres://calls:calls@localhost:5433/calls' };
+const base = { DATABASE_URL: 'mysql://calls:calls@localhost:3307/calls' };
 
 describe('loadConfig', () => {
   it('defaults to the api on port 3100', () => {

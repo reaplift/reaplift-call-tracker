@@ -1,11 +1,18 @@
 import { createDb, createPool } from '../../src/lib/db.js';
-import { migrate } from '../../src/migrate/runner.js';
+import { dropAllTables, migrate } from '../../src/migrate/runner.js';
 import { migrationsDir } from '../../src/modes/migrate.js';
 
-/** A fresh schema with every migration applied. Drops the schema: use a database you can lose (CLAUDE.md). */
+/**
+ * The test database, which every integration test empties. It is TEST_DATABASE_URL, never DATABASE_URL, so the
+ * development database in .env is never dropped by accident (CLAUDE.md). `pnpm db:up` creates calls_test.
+ */
+export const testDatabaseUrl = () => process.env.TEST_DATABASE_URL || 'mysql://calls:calls@localhost:3307/calls_test';
+
+/** Every table dropped, then every migration applied. */
 export async function freshDb() {
-  const pool = createPool(process.env.DATABASE_URL ?? 'postgres://calls:calls@localhost:5433/calls_test');
-  await pool.query('drop schema public cascade; create schema public;');
-  await migrate(pool, migrationsDir());
+  const url = testDatabaseUrl();
+  await dropAllTables(url);
+  await migrate(url, migrationsDir());
+  const pool = createPool(url);
   return { pool, db: createDb(pool) };
 }

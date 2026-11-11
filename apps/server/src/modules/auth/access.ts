@@ -4,11 +4,14 @@ import { sql, type Kysely } from 'kysely';
 import type { Database } from '../../lib/db.js';
 import { hashToken } from '../../lib/auth.js';
 import { sendError } from '../../lib/errors.js';
+import { resolveScope, type Scope } from './scope.js';
 import { findSession, SESSION_COOKIE, type SessionUser } from './sessions.js';
 
 export interface DeviceAuth {
   deviceId: string;
   employeeId: string;
+  /** Taken from the device row, never from the request (D11). */
+  companyId: number;
   pairedAt: Date;
 }
 
@@ -16,6 +19,8 @@ declare module 'fastify' {
   interface FastifyRequest {
     /** Set for every panel route that needs a login. */
     auth?: SessionUser;
+    /** Set for every admin and manager route: the one company, and a manager's employees. */
+    scope?: Scope;
     /** Set for every `/device/v1/...` route except pairing. */
     device?: DeviceAuth;
   }
@@ -33,14 +38,17 @@ export const PUBLIC_ROUTES = [
   '/assets/*',
 ];
 /** Routes any logged-in user may call; they act only on the caller's own session. */
-export const SESSION_ROUTES = ['/api/auth/logout', '/api/auth/me'];
+export const SESSION_ROUTES = ['/api/auth/logout', '/api/auth/me', '/api/auth/company'];
+/** Routes for the super admin only (P1): managing companies. */
+export const SUPER_ADMIN_ROUTES = ['/api/companies', '/api/companies/:id'];
 
-export type RouteKind = 'public' | 'session' | 'admin' | 'manager' | 'device' | 'unscoped';
+export type RouteKind = 'public' | 'session' | 'super_admin' | 'admin' | 'manager' | 'device' | 'unscoped';
 
-/** Managers can read M2 call history and reports, while team/admin setup stays admin-only. */
+/** Managers can read call history and reports; team, user and employee setup stays with admins. */
 export function classifyRoute(url: string): RouteKind {
   if (PUBLIC_ROUTES.includes(url)) return 'public';
   if (SESSION_ROUTES.includes(url)) return 'session';
+  if (SUPER_ADMIN_ROUTES.includes(url)) return 'super_admin';
   if (url.startsWith('/device/v1/')) return 'device';
   if (url === '/api/calls' || url === '/api/calls/export.csv' || url.startsWith('/api/reports/')) return 'manager';
   if (url.startsWith('/api/')) return 'admin';
@@ -48,10 +56,13 @@ export function classifyRoute(url: string): RouteKind {
 }
 
 const STATE_CHANGING = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
+const ADMIN_ROLES = new Set(['super_admin', 'admin']);
+const MANAGER_ROLES = new Set(['super_admin', 'admin', 'manager']);
 
 /**
  * Resolves who is calling before any handler runs. Fails closed: a route that matches no rule answers 404.
- * The panel uses a session cookie; phones use their device token.
+ * The panel uses a session cookie; phones use their device token. Admin and manager routes also get the
+ * request's scope (one company; a manager's team members), so no handler can forget it.
  */
 export function registerAccess(
   app: FastifyInstance,
@@ -65,11 +76,7 @@ export function registerAccess(
     const kind = classifyRoute(url);
 
     // Cookie-carrying requests from another site are refused. Phones carry a token, not a cookie.
-    if (
-      STATE_CHANGING.has(req.method) &&
-      url.startsWith('/api/') &&
-      req.headers.origin !== panelOrigin
-    ) {
+    if (STATE_CHANGING.has(req.method) && url.startsWith('/api/') && req.headers.origin !== panelOrigin) {
       return sendError(reply, 403, 'FORBIDDEN', 'Request origin not allowed');
     }
 
@@ -84,14 +91,30 @@ export function registerAccess(
       const token = header.startsWith('Bearer ') ? header.slice('Bearer '.length) : '';
       const device = token
         ? (
-            await sql<{ id: string; employee_id: string; paired_at: Date; revoked_at: Date | null }>`
-              select id, employee_id, paired_at, revoked_at from devices where token_hash = ${hashToken(token)}
+            await sql<{
+              id: string;
+              employee_id: string;
+              company_id: number;
+              paired_at: Date;
+              revoked_at: Date | null;
+              company_status: string;
+            }>`
+              select d.id, d.employee_id, d.company_id, d.paired_at, d.revoked_at, co.status as company_status
+              from devices d join companies co on co.id = d.company_id
+              where d.token_hash = ${hashToken(token)}
             `.execute(db)
           ).rows[0]
         : undefined;
       if (!device) return sendError(reply, 401, 'UNAUTHENTICATED', 'Pair this phone first');
       if (device.revoked_at) return sendError(reply, 401, 'DEVICE_REVOKED', 'This phone was unpaired');
-      req.device = { deviceId: device.id, employeeId: device.employee_id, pairedAt: device.paired_at };
+      if (device.company_status !== 'active')
+        return sendError(reply, 403, 'COMPANY_SUSPENDED', 'Your company is suspended; tracking is paused');
+      req.device = {
+        deviceId: device.id,
+        employeeId: device.employee_id,
+        companyId: device.company_id,
+        pairedAt: device.paired_at,
+      };
       return;
     }
 
@@ -99,11 +122,19 @@ export function registerAccess(
     const user = token ? await findSession(db, token, now()) : null;
     if (!user) return sendError(reply, 401, 'UNAUTHENTICATED', 'Please log in');
     req.auth = user;
-    if (kind === 'admin' && user.role !== 'admin') {
+    if (kind === 'session') return;
+    if (kind === 'super_admin') {
+      if (user.role !== 'super_admin') return sendError(reply, 403, 'FORBIDDEN', 'Only a super admin can do this');
+      return;
+    }
+    if (kind === 'admin' && !ADMIN_ROLES.has(user.role)) {
       return sendError(reply, 403, 'FORBIDDEN', 'Only an admin can do this');
     }
-    if (kind === 'manager' && user.role !== 'admin' && user.role !== 'manager') {
+    if (kind === 'manager' && !MANAGER_ROLES.has(user.role)) {
       return sendError(reply, 403, 'FORBIDDEN', 'Only an admin or manager can do this');
     }
+    const scoped = await resolveScope(db, user);
+    if (!scoped.ok) return sendError(reply, scoped.status, scoped.error, scoped.message);
+    req.scope = scoped.scope;
   });
 }

@@ -5,6 +5,7 @@ import type { Database } from '../../lib/db.js';
 import { csvLine } from '../../lib/csv.js';
 import { sendError } from '../../lib/errors.js';
 import { formatIst } from '../../lib/time.js';
+import { scopeSql } from '../auth/scope.js';
 import { FilterError, filterSql, parseCallFilter, type CallFilter } from './filter.js';
 
 const DEFAULT_LIMIT = 50;
@@ -55,7 +56,7 @@ function decodeCursor(cursor: string | undefined): { startedAt: Date; id: number
 const SELECT = sql`
   select c.id, c.employee_id, e.name as employee_name, c.number, c.number_kind, c.contact_name, c.type,
          c.started_at, c.talk_seconds, c.ring_seconds, c.synced_at
-  from calls c join employees e on e.id = c.employee_id
+  from calls c join employees e on e.id = c.employee_id and e.company_id = c.company_id
 `;
 
 export function registerCallRoutes(app: FastifyInstance, deps: { db: Kysely<Database>; now: () => Date }) {
@@ -80,7 +81,7 @@ export function registerCallRoutes(app: FastifyInstance, deps: { db: Kysely<Data
     const rows = (
       await sql<Row>`
         ${SELECT}
-        where ${filterSql(filter)}
+        where ${scopeSql(req.scope!)} and ${filterSql(filter)}
           ${after ? sql`and (c.started_at, c.id) < (${after.startedAt}, ${after.id})` : sql``}
         order by c.started_at desc, c.id desc
         limit ${limit + 1}
@@ -99,7 +100,7 @@ export function registerCallRoutes(app: FastifyInstance, deps: { db: Kysely<Data
     if (filter instanceof FilterError) return sendError(reply, 400, filter.code, filter.message);
     const rows = (
       await sql<Row>`
-        ${SELECT} where ${filterSql(filter)} order by c.started_at desc, c.id desc limit ${CSV_MAX_ROWS}
+        ${SELECT} where ${scopeSql(req.scope!)} and ${filterSql(filter)} order by c.started_at desc, c.id desc limit ${CSV_MAX_ROWS}
       `.execute(db)
     ).rows;
     let body = csvLine(['Date and time (IST)', 'Employee', 'Number', 'Contact', 'Type', 'Talk (s)', 'Ring (s)', 'Synced (IST)']);

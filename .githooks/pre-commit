@@ -11,7 +11,8 @@ if ! git diff --cached --check; then
 fi
 
 staged_files="$(git diff --cached --name-only --diff-filter=ACMR)"
-if echo "$staged_files" | grep -Eq '(^|/)(\.env|\.env\..*|.*\.pem|.*\.key|.*\.crt)$'; then
+# .env.example is the one exception: it lists every setting name with a blank value (CLAUDE.md).
+if echo "$staged_files" | grep -Ev '(^|/)\.env\.example$' | grep -Eq '(^|/)(\.env|\.env\..*|.*\.pem|.*\.key|.*\.crt)$'; then
   echo "ERROR: secrets or environment files are staged. Never commit them."
   exit 1
 fi

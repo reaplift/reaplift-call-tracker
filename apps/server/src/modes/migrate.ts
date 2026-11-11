@@ -1,7 +1,6 @@
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { Config } from '../config.js';
-import { createPool } from '../lib/db.js';
 import type { Logger } from '../lib/logger.js';
 import { migrate } from '../migrate/runner.js';
 
@@ -11,11 +10,6 @@ export const migrationsDir = () =>
   path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../../db/migrations');
 
 export async function runMigrate(config: Config, log: Logger) {
-  const pool = createPool(config.DATABASE_URL);
-  try {
-    const result = await migrate(pool, migrationsDir());
-    log.info(result, 'migrations finished');
-  } finally {
-    await pool.end();
-  }
+  const result = await migrate(config.DATABASE_URL, migrationsDir());
+  log.info(result, 'migrations finished');
 }

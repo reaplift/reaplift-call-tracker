@@ -3,7 +3,6 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { sql, type Kysely } from 'kysely';
-import type pg from 'pg';
 import { buildApp } from '../src/app.js';
 import type { Database } from '../src/lib/db.js';
 import { createUser } from '../src/modules/auth/users.js';
@@ -12,7 +11,6 @@ import { freshDb } from './support/db.js';
 const ORIGIN = 'http://localhost:5174';
 const PASSWORD = 'calls-test-password';
 let clock = new Date('2026-11-09T04:30:00Z'); // 10:00 in India
-let pool: pg.Pool;
 let db: Kysely<Database>;
 let app: ReturnType<typeof buildApp>;
 let cookie = '';
@@ -55,7 +53,8 @@ async function pairPhone(employeeId: string) {
 }
 
 beforeAll(async () => {
-  ({ pool, db } = await freshDb());
+  ({ db } = await freshDb());
+  await sql`insert into companies (id, name) values (1, 'ReapLift')`.execute(db);
   apkDir = await mkdtemp(path.join(tmpdir(), 'calls-apk-'));
   app = buildApp({
     version: 'test',
@@ -66,7 +65,7 @@ beforeAll(async () => {
     publicBaseUrl: 'http://192.168.1.10:3100',
     apkDir,
   });
-  await createUser(db, { email: 'admin@reaplift.local', name: 'Nikhila', role: 'admin', password: PASSWORD });
+  await createUser(db, { email: 'admin@reaplift.local', name: 'Nikhila', role: 'admin', password: PASSWORD, companyId: 1 });
   await login();
 });
 
@@ -84,12 +83,12 @@ async function login() {
 
 afterAll(async () => {
   await app.close();
-  await pool.end();
+  await db.destroy();
 });
 
 describe('login', () => {
   it('refuses a wrong password and locks after 5 in a row', async () => {
-    await createUser(db, { email: 'other@reaplift.local', name: 'Other', role: 'admin', password: PASSWORD });
+    await createUser(db, { email: 'other@reaplift.local', name: 'Other', role: 'admin', password: PASSWORD, companyId: 1 });
     const attempt = (password: string) =>
       app.inject({
         method: 'POST',
@@ -154,6 +153,7 @@ describe('install page and pairing', () => {
     const paired = await app.inject({ method: 'POST', url: '/device/v1/pair', payload: { code, ...PHONE } });
     expect(paired.statusCode).toBe(201);
     expect(paired.json().employee).toEqual({ name: 'Asha Rao', companyNumber: '919700011122' });
+    expect(paired.json().company).toEqual({ name: 'ReapLift' });
 
     const again = await app.inject({ method: 'POST', url: '/device/v1/pair', payload: { code, ...PHONE } });
     expect(again.json().error).toBe('PAIRING_CODE_INVALID');
@@ -205,7 +205,7 @@ describe('call sync and call history', () => {
     expect(first.json()).toEqual({ accepted: 4, duplicates: 0, rejected: [] });
     const resent = await device(token, '/device/v1/calls', { calls: [...calls, calls[0]] });
     expect(resent.json()).toEqual({ accepted: 0, duplicates: 5, rejected: [] });
-    const count = await sql<{ n: number }>`select count(*)::int as n from calls where employee_id = ${ravi}`.execute(db);
+    const count = await sql<{ n: number }>`select count(*) as n from calls where employee_id = ${ravi}`.execute(db);
     expect(count.rows[0]!.n).toBe(4);
   });
 

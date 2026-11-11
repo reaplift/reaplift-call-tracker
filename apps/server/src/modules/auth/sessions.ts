@@ -17,6 +17,10 @@ export interface SessionUser {
   name: string;
   email: string;
   role: UserRole;
+  /** The user's own company; null for a super admin. */
+  companyId: number | null;
+  /** A super admin's chosen company for this session (P1). */
+  selectedCompanyId: number | null;
 }
 
 function expiryFrom(createdAt: Date, now: Date): Date {
@@ -33,7 +37,7 @@ export async function createSession(
   await sql`
     insert into auth_sessions (user_id, token_hash, created_at, last_seen_at, expires_at, user_agent, ip_address)
     values (${userId}, ${hashToken(token)}, ${now}, ${now}, ${expiryFrom(now, now)},
-            ${meta.userAgent ?? null}, ${meta.ip ?? null})
+            ${meta.userAgent?.slice(0, 500) ?? null}, ${meta.ip ?? null})
   `.execute(db);
   return { token };
 }
@@ -45,12 +49,15 @@ export async function findSession(db: Kysely<Database>, token: string, now: Date
       session_id: string;
       created_at: Date;
       last_seen_at: Date;
+      selected_company_id: number | null;
       user_id: string;
       name: string;
       email: string;
       role: UserRole;
+      company_id: number | null;
     }>`
-      select s.id as session_id, s.created_at, s.last_seen_at, u.id as user_id, u.name, u.email, u.role
+      select s.id as session_id, s.created_at, s.last_seen_at, s.selected_company_id,
+             u.id as user_id, u.name, u.email, u.role, u.company_id
       from auth_sessions s join users u on u.id = s.user_id
       where s.token_hash = ${hashToken(token)} and s.revoked_at is null and s.expires_at > ${now}
         and u.disabled_at is null
@@ -63,7 +70,15 @@ export async function findSession(db: Kysely<Database>, token: string, now: Date
       where id = ${row.session_id}
     `.execute(db);
   }
-  return { sessionId: row.session_id, userId: row.user_id, name: row.name, email: row.email, role: row.role };
+  return {
+    sessionId: row.session_id,
+    userId: row.user_id,
+    name: row.name,
+    email: row.email,
+    role: row.role,
+    companyId: row.company_id,
+    selectedCompanyId: row.role === 'super_admin' ? row.selected_company_id : null,
+  };
 }
 
 export async function revokeSession(db: Kysely<Database>, sessionId: string, now: Date): Promise<void> {

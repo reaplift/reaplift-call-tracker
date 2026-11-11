@@ -5,7 +5,8 @@
 #   scripts/pilot.sh start     database, build, tunnel, server, and an APK built for the tunnel's address
 #   scripts/pilot.sh stop      stops the server and the tunnel
 #   scripts/pilot.sh status    is it running, and at which address
-#   scripts/pilot.sh admin <email> <name>   creates a panel admin with a random password, printed once
+#   scripts/pilot.sh company <id> <name>          adds a client company (id = the CRM's company number)
+#   scripts/pilot.sh admin <company-id> <email> <name>   creates a company admin with a random password, printed once
 #
 # The tunnel's address changes every time it starts, and the APK has the address built in: after a restart,
 # testers need the new APK. The Mac must stay on, awake (this script keeps it awake while the server runs,
@@ -17,7 +18,7 @@ HOME_DIR="$HOME/.reaplift-calls"
 LOGS="$HOME_DIR/logs"
 APK_DIR="$HOME_DIR/apk"
 PORT=3200
-DB_URL="postgres://calls:calls@localhost:5433/calls_pilot"
+DB_URL="mysql://calls:calls@localhost:3307/calls_pilot"
 export JAVA_HOME="${JAVA_HOME:-/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home}"
 mkdir -p "$LOGS" "$APK_DIR"
 
@@ -41,9 +42,8 @@ start() {
   cd "$ROOT"
   echo "== database"
   pnpm db:up >/dev/null
-  until docker exec reaplift-calls-postgres-1 pg_isready -U calls >/dev/null 2>&1; do sleep 1; done
-  docker exec reaplift-calls-postgres-1 psql -U calls -tc "select 1 from pg_database where datname = 'calls_pilot'" | grep -q 1 ||
-    docker exec reaplift-calls-postgres-1 psql -U calls -c 'create database calls_pilot' >/dev/null
+  docker exec reaplift-calls-mariadb-1 mariadb -uroot -pcalls-root -e \
+    "create database if not exists calls_pilot character set utf8mb4 collate utf8mb4_unicode_ci; grant all privileges on calls_pilot.* to 'calls'@'%';"
   (cd apps/server && DATABASE_URL="$DB_URL" npx tsx src/main.ts --mode=migrate) | tail -1
 
   echo "== build server and panel"
@@ -88,11 +88,16 @@ start() {
   status
 }
 
+company() {
+  local id="${1:?company id}" name="${2:?name}"
+  (cd "$ROOT/apps/server" && DATABASE_URL="$DB_URL" npx tsx src/cli.ts create-company --id "$id" --name "$name")
+}
+
 admin() {
-  local email="${1:?email}" name="${2:?name}"
+  local company_id="${1:?company id}" email="${2:?email}" name="${3:?name}"
   local password
   password=$(openssl rand -base64 18 | tr -d '/+=' | cut -c1-16)
-  (cd "$ROOT/apps/server" && printf '%s\n' "$password" | DATABASE_URL="$DB_URL" npx tsx src/cli.ts create-user --email "$email" --name "$name" --role admin)
+  (cd "$ROOT/apps/server" && printf '%s\n' "$password" | DATABASE_URL="$DB_URL" npx tsx src/cli.ts create-user --email "$email" --name "$name" --role admin --company "$company_id")
   echo "password (shown once; change it by creating a new admin if lost): $password"
 }
 
@@ -100,6 +105,7 @@ case "${1:-}" in
   start) start ;;
   stop) stop ;;
   status) status ;;
+  company) shift; company "$@" ;;
   admin) shift; admin "$@" ;;
-  *) echo "usage: scripts/pilot.sh start|stop|status|admin <email> <name>"; exit 1 ;;
+  *) echo "usage: scripts/pilot.sh start|stop|status|company <id> <name>|admin <company-id> <email> <name>"; exit 1 ;;
 esac

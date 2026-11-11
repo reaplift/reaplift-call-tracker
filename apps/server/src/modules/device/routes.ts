@@ -54,22 +54,27 @@ export function registerDeviceRoutes(
     const employee = await db.transaction().execute(async (trx) => {
       // Single use: a second phone racing with the same code finds it used.
       const claimed = await sql`
-        update pairing_codes set used_at = ${at} where id = ${live.id} and used_at is null returning id
+        update pairing_codes set used_at = ${at} where id = ${live.id} and used_at is null
       `.execute(trx);
-      if (!claimed.rows.length) return null;
+      if (Number(claimed.numAffectedRows ?? 0) === 0) return null;
       // One live phone per employee: the new phone replaces the old one.
-      await sql`update devices set revoked_at = ${at} where employee_id = ${live.employeeId} and revoked_at is null`.execute(trx);
+      await sql`
+        update devices set revoked_at = ${at}
+        where company_id = ${live.companyId} and employee_id = ${live.employeeId} and revoked_at is null
+      `.execute(trx);
+      // The device's company comes from the pairing code, never from what the phone sends (D11).
       const deviceId = (
         await sql<{ id: string }>`
-          insert into devices (employee_id, token_hash, brand, model, android_version, sdk_int, app_version,
+          insert into devices (company_id, employee_id, token_hash, brand, model, android_version, sdk_int, app_version,
                                default_dialer, sim_slot, sim_carrier, phone_account_id, consent_at, consent_version, paired_at)
-          values (${live.employeeId}, ${hashToken(token)}, ${p.brand}, ${p.model}, ${p.androidVersion}, ${p.sdkInt},
+          values (${live.companyId}, ${live.employeeId}, ${hashToken(token)}, ${p.brand}, ${p.model}, ${p.androidVersion}, ${p.sdkInt},
                   ${p.appVersion}, ${p.defaultDialer ?? null}, ${p.simSlot}, ${p.simCarrier ?? null},
                   ${p.phoneAccountId ?? null}, ${at}, ${p.consentVersion}, ${at})
           returning id
         `.execute(trx)
       ).rows[0]!.id;
       await audit(trx, {
+        companyId: live.companyId,
         deviceId,
         action: 'device.paired',
         targetType: 'employee',
@@ -78,7 +83,7 @@ export function registerDeviceRoutes(
       });
       return (
         await sql<{ name: string; company_number: string }>`
-          select name, company_number from employees where id = ${live.employeeId}
+          select name, company_number from employees where company_id = ${live.companyId} and id = ${live.employeeId}
         `.execute(trx)
       ).rows[0]!;
     });
@@ -88,6 +93,7 @@ export function registerDeviceRoutes(
     const body: PairResponse = {
       deviceToken: token,
       employee: { name: employee.name, companyNumber: employee.company_number },
+      company: { name: live.companyName },
       settings,
     };
     return reply.code(201).send(body);
@@ -111,7 +117,7 @@ export function registerDeviceRoutes(
       if (unique.has(call.deviceCallId)) result.duplicates += 1;
       unique.set(call.deviceCallId, call);
     }
-    const rows = [];
+    const rows: Array<{ call: DeviceCall; number: string; kind: string }> = [];
     for (const call of unique.values()) {
       const started = new Date(call.startedAt).getTime();
       if (started > latest) {
@@ -123,32 +129,44 @@ export function registerDeviceRoutes(
         continue;
       }
       const { number, kind } = normalizeNumber(call.number);
-      rows.push(sql`(
-        ${device.employeeId}::uuid, ${device.deviceId}::uuid, ${call.deviceCallId}, ${number}, ${kind},
-        ${call.contactName?.trim() || null}, ${call.type}, ${call.startedAt}::timestamptz, ${call.talkSeconds},
-        ${call.ringSeconds ?? null}::int, ${call.endedAt ?? null}::timestamptz, ${at}::timestamptz, ${at}::timestamptz
-      )`);
+      rows.push({ call, number, kind });
     }
 
     if (rows.length) {
-      const inserted = (
-        await sql<{ inserted: boolean }>`
-          insert into calls (employee_id, device_id, device_call_id, number, number_kind, contact_name, type,
+      await db.transaction().execute(async (trx) => {
+        // Rows this phone already sent are duplicates; a phone sends its own batches one at a time.
+        const ids = rows.map((r) => r.call.deviceCallId);
+        const seen = new Set(
+          (
+            await sql<{ device_call_id: string }>`
+              select device_call_id from calls where device_id = ${device.deviceId} and device_call_id in (${sql.join(ids)})
+            `.execute(trx)
+          ).rows.map((r) => r.device_call_id),
+        );
+        const values = rows.map(
+          ({ call, number, kind }) => sql`(
+            ${device.companyId}, ${device.employeeId}, ${device.deviceId}, ${call.deviceCallId}, ${number}, ${kind},
+            ${call.contactName?.trim() || null}, ${call.type}, ${new Date(call.startedAt)}, ${call.talkSeconds},
+            ${call.ringSeconds ?? null}, ${call.endedAt ? new Date(call.endedAt) : null}, ${at}, ${at}
+          )`,
+        );
+        // The company and employee come from the device row, never from the request (D11).
+        await sql`
+          insert into calls (company_id, employee_id, device_id, device_call_id, number, number_kind, contact_name, type,
                              started_at, talk_seconds, ring_seconds, ended_at, synced_at, updated_at)
-          values ${sql.join(rows)}
-          on conflict (device_id, device_call_id) do update set
+          values ${sql.join(values)}
+          on duplicate key update
             -- A resend may add what the first send lacked (a contact saved later, ringing time measured late).
-            contact_name = coalesce(excluded.contact_name, calls.contact_name),
-            ring_seconds = coalesce(calls.ring_seconds, excluded.ring_seconds),
-            ended_at = coalesce(calls.ended_at, excluded.ended_at),
-            updated_at = excluded.updated_at
-          returning (xmax = 0) as inserted
-        `.execute(db)
-      ).rows;
-      for (const r of inserted) {
-        if (r.inserted) result.accepted += 1;
-        else result.duplicates += 1;
-      }
+            contact_name = coalesce(values(contact_name), contact_name),
+            ring_seconds = coalesce(ring_seconds, values(ring_seconds)),
+            ended_at = coalesce(ended_at, values(ended_at)),
+            updated_at = values(updated_at)
+        `.execute(trx);
+        for (const r of rows) {
+          if (seen.has(r.call.deviceCallId)) result.duplicates += 1;
+          else result.accepted += 1;
+        }
+      });
     }
     await sql`update devices set last_sync_at = ${at} where id = ${device.deviceId}`.execute(db);
     return reply.code(200).send(result);

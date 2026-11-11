@@ -14,7 +14,7 @@
     "test": "pnpm -r test",
     "test:int": "pnpm --filter @reaplift/calls-server test:int",
     "migrate": "pnpm --filter @reaplift/calls-server migrate",
-    "db:up": "docker compose -f infra/compose.dev.yml up -d postgres",
+    "db:up": "docker compose -f infra/compose.dev.yml up -d --wait mariadb",
     "db:down": "docker compose -f infra/compose.dev.yml down",
     "format": "prettier --write ."
   },

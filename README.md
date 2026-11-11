@@ -6,7 +6,7 @@ Start with [docs/project-tracker.md](docs/project-tracker.md). The design is in 
 
 ## Run it locally (Mac)
 
-Needs Node 22+, pnpm 10, Docker. Ports are 5433 (database), 3100 (server) and 5174 (panel), so `reaplift-bsp` can run at the same time.
+Needs Node 22+, pnpm 10, Docker. Ports are 3307 (MariaDB 11.8, Hostinger's version), 3100 (server) and 5174 (panel), so `reaplift-bsp` can run at the same time.
 
 ```bash
 cp .env.example .env
@@ -18,9 +18,10 @@ pnpm dev
 
 - Server health: http://localhost:3100/healthz
 - Panel: http://localhost:5174
-- Checks: `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm test:int` (drops its database's schema, so use a separate one:
-  `DATABASE_URL=postgres://calls:calls@localhost:5433/calls_test pnpm test:int`, after
-  `docker exec reaplift-calls-postgres-1 psql -U calls -c 'create database calls_test'`)
+- Checks: `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm test:int`. `test:int` drops every table in its database, so
+  it uses `TEST_DATABASE_URL` (default: the `calls_test` database that `pnpm db:up` creates), never `DATABASE_URL`.
+- Local logins: `pnpm --filter @reaplift/calls-server cli seed-dev` creates company 1, `super@reaplift.local` and
+  `admin@reaplift.local` (password `calls-dev-1`).
 
 ## Android app
 

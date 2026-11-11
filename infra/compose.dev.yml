@@ -1,22 +1,26 @@
-# Local development database. Port 5433 so reaplift-bsp's PostgreSQL (5432) can run at the same time.
+# Local development database: MariaDB 11.8, the version Hostinger's shared hosting runs (decision D10).
+# Port 3307, so another project's MySQL on 3306 can run at the same time.
 #   pnpm db:up / pnpm db:down
+# The init script also creates calls_test, the database `pnpm test:int` drops and rebuilds.
 name: reaplift-calls
 
 services:
-  postgres:
-    image: postgres:16
+  mariadb:
+    image: mariadb:11.8
     environment:
-      POSTGRES_USER: calls
-      POSTGRES_PASSWORD: calls
-      POSTGRES_DB: calls
+      MARIADB_USER: calls
+      MARIADB_PASSWORD: calls
+      MARIADB_DATABASE: calls
+      MARIADB_ROOT_PASSWORD: calls-root
     ports:
-      - '5433:5432'
+      - '3307:3306'
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      - mariadbdata:/var/lib/mysql
+      - ./mariadb-init:/docker-entrypoint-initdb.d:ro
     healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U calls']
+      test: ['CMD', 'healthcheck.sh', '--connect', '--innodb_initialized']
       interval: 2s
       retries: 30
 
 volumes:
-  pgdata:
+  mariadbdata:

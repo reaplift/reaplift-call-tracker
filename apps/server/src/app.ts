@@ -5,6 +5,7 @@ import type { Database } from './lib/db.js';
 import { registerAccess } from './modules/auth/access.js';
 import { registerAuthRoutes } from './modules/auth/routes.js';
 import { registerCallRoutes } from './modules/calls/routes.js';
+import { registerCompanyRoutes } from './modules/companies/routes.js';
 import { registerDeviceRoutes } from './modules/device/routes.js';
 import { registerEmployeeRoutes } from './modules/employees/routes.js';
 import { registerInstallRoutes } from './modules/install/routes.js';
@@ -90,6 +91,7 @@ export function buildApp({
 
   registerAccess(app, { db, now, panelOrigin });
   registerAuthRoutes(app, { db, now, cookieSecure });
+  registerCompanyRoutes(app, { db });
   registerEmployeeRoutes(app, { db, now, publicBaseUrl, pairingCodeHours });
   registerDeviceRoutes(app, { db, now, settings: deviceSettings });
   registerCallRoutes(app, { db, now });
