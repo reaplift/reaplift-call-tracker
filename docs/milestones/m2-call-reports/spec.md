@@ -2,7 +2,7 @@
 
 - Status: In progress
 - Owner: unassigned
-- Starts after: M1
+- Starts after: M1, P1 (paused on 11 November 2026 until P1 moves the code to MariaDB with companies)
 - External prerequisites: none
 
 ## Outcome

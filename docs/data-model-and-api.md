@@ -2,17 +2,18 @@
 
 Every table and route on one page: what each milestone adds, and the conventions they all follow. Each milestone's spec has the full detail for its own tables and routes. When a spec changes a table or route, update this file in the same commit; if the two disagree, the spec wins until this file is fixed.
 
-Last reviewed: 7 November 2026 (design only; nothing is built).
+Last reviewed: 11 November 2026. The database moves from PostgreSQL to MariaDB 11.8 and every company-data table gains `company_id` in P1 (decisions D10 and D11; see [P1's spec](milestones/p1-mariadb-and-companies/spec.md) for the type mapping). The tables below show the columns; P1's changes are listed under "Companies (P1)".
 
 ## Conventions
 
 | Topic | Rule |
 | --- | --- |
-| IDs | `uuid` with `gen_random_uuid()`. High-volume append tables (`calls`, `device_checkins`, `audit_logs`, `webhook_deliveries`) use `bigint generated always as identity`. |
+| Database | MariaDB 11.8 from P1 (PostgreSQL 16 until then). Our own database, separate from the CRM's. |
+| IDs | `uuid` with `default uuid()` (`gen_random_uuid()` until P1). High-volume append tables (`calls`, `device_checkins`, `audit_logs`, `webhook_deliveries`) use `bigint unsigned auto_increment`. `companies.id` is the CRM's company number, set by hand. |
 | Phone numbers | Digits with country code, no plus: `919812345678`. A 10-digit Indian mobile gets `91` added; anything else (landline, toll-free, short code, private number) is stored as the phone gave it, digits only, and flagged `number_kind`. |
-| Times | `timestamptz` in UTC. Days, hours and "yesterday" are India time (`Asia/Kolkata`). |
+| Times | Stored in UTC: `datetime(3)` with the connection's time zone set to `+00:00` (`timestamptz` until P1). Days, hours and "yesterday" are India time, `+05:30`; India has no daylight saving, so a fixed offset is used and the server needs no time-zone tables. |
 | Durations | Whole seconds in `int`. |
-| One company | No `client_id`. Access is by role: `admin` sees everything; `manager` sees employees in their teams (M2). Every employee-data query goes through one scope function that applies this. |
+| Companies | Every company-data table has `company_id` (D11). Access: `super_admin` picks one company and sees what its admin sees; `admin` sees their company; `manager` sees employees in their teams (M2). Every employee-data query goes through one scope function, company first, then role. A device's company comes from its row, never from the request. Reports never add up several companies. |
 | Migrations | New numbered file only; never edit a merged one; only add tables, nullable columns and indexes. Claim the number in the tracker's registry first. |
 | Routes | `/api/...` for the panel (session cookie); `/device/v1/...` for the app (device token); `/v1/...` for the CRM (API key, M5); public: `/healthz`, `/api/auth/login`, `/i/:code` (install page), `/app/latest.apk`. A route-walking test fails CI for any other pattern. |
 | Errors | `{ "error": "<CODE>", "message": "<text>" }`, with `details` for field errors on 400. |
@@ -55,6 +56,29 @@ erDiagram
 ```
 
 ## Tables
+
+### Companies (P1)
+
+| Table or change | Columns | Milestone |
+| --- | --- | --- |
+| `companies` | `id int unsigned primary key` (the CRM's company number), `name`, `status` (`active`, `suspended`), `created_at` | P1 |
+| `company_id int unsigned not null` | Added to `employees`, `pairing_codes`, `devices`, `calls`, `teams`, `team_members`, `team_managers`, `excluded_numbers`, `daily_employee_stats`, and every later company-data table (`device_checkins`, `recordings`, `api_keys`, `webhooks` and so on) | P1 onwards |
+| `company_id null` | `users` (null for a super admin), `audit_logs` (null for system events), `jobs` (null for jobs not about one company) | P1 |
+| Uniqueness | `employees.company_number` unique across all companies; `emp_code`, `teams.name` unique within a company; `excluded_numbers` primary key (`company_id`, `number`); `users.email` unique across all companies | P1 |
+| Indexes | Start with `company_id` where reports filter, for example `calls (company_id, employee_id, started_at)` | P1 |
+
+`users.role` gains `super_admin`. `app_releases` stays shared by all companies (one app for everyone).
+
+### Legal sign-off (P1.8, D12)
+
+| Table or change | Columns | Milestone |
+| --- | --- | --- |
+| `company_agreements` | `id`, `company_id`, `kind` (`data_processing`), `version`, `signed_on date`, `signed_by_name`, `signed_by_title`, `document_ref` (where the signed copy is kept; an R2 object key once R2 is connected), `recorded_by`, `created_at`, `superseded_at` | P1 |
+| `consent_texts` | `id`, `company_id`, `version`, `language`, `body`, `published_by`, `published_at`. Unique (`company_id`, `version`). Never edited after publishing | P1 |
+| `employee_consents` | `id bigint`, `company_id`, `employee_id`, `device_id`, `consent_text_id`, `accepted_at`, `app_version`, `withdrawn_at null`, `withdraw_reason null` | P1 |
+| `employees` (new columns) | `policy_signed_at null`, `policy_document_ref null`, `policy_recorded_by null` | P1 |
+
+A company's devices sync only while it has a current agreement, the employee has `policy_signed_at`, and the device's latest consent is for the company's current `consent_texts` version and not withdrawn.
 
 ### Access (M1, M2)
 
@@ -119,11 +143,18 @@ An employee has at most one active device; pairing a new phone revokes the old o
 | `recordings` | `id`, `call_id unique`, `status` (`pending_upload`, `uploaded`, `missing`, `not_expected`), `object_key`, `size_bytes`, `audio_seconds`, `mime_type`, `match_score`, `matched_at`, `uploaded_at`, `deleted_at` | M6 |
 | `recording_plays` | `id bigint`, `recording_id`, `user_id`, `at` (also in `audit_logs`) | M6 |
 
+### Call from the app (M9)
+
+| Table | Columns | Milestone |
+| --- | --- | --- |
+| `call_requests` | `id`, `company_id`, `employee_id`, `device_id`, `number`, `crm_lead_id null`, `requested_at`, `call_id null` (set when the synced call matches by number and time) | M9 |
+| `calls` (new columns) | `started_from_app bool`, `crm_lead_id null` | M9 |
+
 ### Jobs (M2)
 
 | Table | Columns | Milestone |
 | --- | --- | --- |
-| `jobs` | `id bigint`, `kind`, `payload jsonb`, `run_at`, `locked_at`, `attempts`, `last_error`, `done_at`. Workers take jobs with `for update skip locked`. | M2 |
+| `jobs` | `id bigint`, `kind`, `payload json`, `run_at`, `locked_at`, `attempts`, `last_error`, `done_at`. Workers take jobs with `for update skip locked` (MariaDB 10.6+ supports it). On shared hosting, hPanel cron runs the worker for a short time every minute (D10). | M2 |
 
 ## API
 
@@ -133,6 +164,8 @@ An employee has at most one active device; pairing a new phone revokes the old o
 | --- | --- | --- | --- |
 | POST | `/api/auth/login`, `/api/auth/logout` | anyone, logged in | M1 |
 | GET | `/api/auth/me` | logged in | M1 |
+| GET, POST | `/api/companies` | super admin | P1 |
+| PATCH | `/api/companies/:id` | super admin | P1 |
 | GET, POST | `/api/employees` | admin (managers read their teams' from M2) | M1 |
 | GET, PATCH | `/api/employees/:id` | admin | M1 |
 | POST | `/api/employees/:id/pairing-code` | admin | M1 |
@@ -154,7 +187,9 @@ An employee has at most one active device; pairing a new phone revokes the old o
 | POST | `/device/v1/calls` | Batch of up to 200 calls. Returns `{ accepted, duplicates }`. Idempotent on (`device`, `deviceCallId`) | M1 |
 | GET | `/device/v1/config` | Settings, latest app version | M1 (version from M4) |
 | POST | `/device/v1/checkin` | Health snapshot | M4 |
-| PATCH | `/device/v1/calls/:deviceCallId/note` | Note after a call | M4 |
+| PATCH | `/device/v1/calls/:deviceCallId/note` | After-call form: outcome, comment, follow-up | M4 |
+| POST | `/device/v1/call-requests` | Record that the app is about to place a call | M9 |
+| GET | `/device/v1/leads` | The employee's CRM leads to call | M9 |
 | POST | `/device/v1/recordings/upload-url` | `{ deviceCallId, sizeBytes, mimeType, audioSeconds, matchScore }` → `{ uploadUrl, expiresAt }` | M6 |
 | POST | `/device/v1/recordings/complete` | Confirms the upload; server checks the object exists | M6 |
 | POST | `/device/v1/recordings/missing` | Marks a call's recording missing | M6 |
@@ -184,6 +219,11 @@ The same reports and history as the panel, in Callyzer's shape so the CRM gets e
 | `DEVICE_REVOKED` | 401 | Device token revoked |
 | `PAIRING_CODE_INVALID` | 400 | Code wrong, used or expired |
 | `FORBIDDEN` | 403 | Role not allowed |
-| `NOT_FOUND` | 404 | Unknown ID, or another team's data for a manager |
+| `NOT_FOUND` | 404 | Unknown ID, or another team's data for a manager, or another company's data (P1) |
+| `NUMBER_IN_USE` | 409 | The company SIM number already belongs to another employee, in any company (P1) |
+| `COMPANY_SUSPENDED` | 403 | The company is suspended; its devices stop syncing and its users cannot log in (P1) |
+| `COMPANY_AGREEMENT_MISSING` | 409 or 403 | No current company agreement: pairing code refused (409), device sync refused (403) (P1.8) |
+| `EMPLOYEE_POLICY_MISSING` | 409 | Pairing code asked for an employee without a recorded signed policy (P1.8) |
+| `CONSENT_REQUIRED` | 403 | Device syncing without consent to the company's current consent text (P1.8) |
 | `LOGIN_LOCKED` | 423 | Too many wrong passwords |
 | `RATE_LIMITED` | 429 | CRM API over its limit |

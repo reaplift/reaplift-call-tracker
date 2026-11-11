@@ -7,7 +7,7 @@
 
 ## Outcome
 
-The panel's Phones page shows, for every employee, whether their phone is healthy: last check-in, last sync, app version, battery saving, permissions, company SIM present, calls waiting to send, default dialer. A phone that goes quiet or loses a permission is flagged and the admin and manager are emailed. The app updates itself when a new APK is published, and the employee can add a note to a call right after it ends.
+The panel's Phones page shows, for every employee, whether their phone is healthy: last check-in, last sync, app version, battery saving, permissions, company SIM present, calls waiting to send, default dialer. A phone that goes quiet or loses a permission is flagged and the admin and manager are emailed. The app updates itself when a new APK is published, and right after each company-SIM call the employee fills a short after-call form: outcome, comment and optional follow-up date (owner, 11 November 2026). Calls left without a form stay on a "needs comment" list in the app with reminders, and managers see which calls have none.
 
 ## Flow diagram
 
@@ -23,8 +23,9 @@ flowchart TD
   I["Admin uploads a new APK"] --> J["App sees it in /device/v1/config"]
   J --> K["Downloads, checks SHA-256,<br/>asks the employee to install"]
   K -- "older than min supported" --> L["Sync paused until updated"]
-  M["Call ends"] --> N["Notification: 'Add a note?'"]
-  N --> O["PATCH note"]
+  M["Company-SIM call ends"] --> N["After-call form opens:<br/>outcome, comment, follow-up"]
+  N -- "filled" --> O["PATCH call outcome"]
+  N -- "skipped" --> P["Needs-comment list in the app,<br/>reminder; shown to managers"]
 ```
 
 ## Worked example
@@ -33,7 +34,7 @@ Asha turns on her Oppo's battery saver at 13:00. Her 13:15 check-in reports it; 
 
 ## Scope
 
-In: check-ins, the Phones page and health rules, alert emails (deduplicated: one per problem until fixed), app releases and self-update (`REQUEST_INSTALL_PACKAGES`, SHA-256 check, minimum supported version), the note after a call, more brand guides, and the setup screen's device summary (brand, Android version, dialer) for the phone survey (E2).
+In: check-ins, the Phones page and health rules, alert emails (deduplicated: one per problem until fixed), app releases and self-update (`REQUEST_INSTALL_PACKAGES`, SHA-256 check, minimum supported version), the after-call form (outcome, comment, follow-up date) with a needs-comment list and reminders, more brand guides, and the setup screen's device summary (brand, Android version, dialer) for the phone survey (E2).
 
 Out: recording status (M6).
 
@@ -45,12 +46,12 @@ Out: recording status (M6).
 | 4.2 | Health rules and the Phones page |
 | 4.3 | Health alert emails, deduplicated |
 | 4.4 | App releases: upload, `/device/v1/config` version, in-app update |
-| 4.5 | Note after a call |
+| 4.5 | After-call form: outcome, comment, follow-up; needs-comment list and reminders |
 | 4.6 | Brand guides for any brand found in the phone survey |
 
 ## Data and API
 
-Migration: `device_checkins`, `app_releases`, `devices.last_checkin_at`, `calls.note`. Settings: `CHECKIN_SILENT_MINUTES` (120).
+Migration: `device_checkins`, `app_releases`, `devices.last_checkin_at`, `calls.note`, `calls.outcome` (company-defined list, `call_outcomes` table with `company_id`), `calls.follow_up_at`, `calls.commented_at`. Settings: `CHECKIN_SILENT_MINUTES` (120).
 
 ## Open questions
 
@@ -58,4 +59,4 @@ Migration: `device_checkins`, `app_releases`, `devices.last_checkin_at`, `calls.
 
 ## Demo (milestone acceptance)
 
-On each test phone: turn on battery saving, revoke the call-log permission, remove the SIM, switch the phone off; each shows on the Phones page with the right reason and one email. Publish a new version; the phone updates without losing pairing. Add a note after a call; it shows in call history.
+On each test phone: turn on battery saving, revoke the call-log permission, remove the SIM, switch the phone off; each shows on the Phones page with the right reason and one email. Publish a new version; the phone updates without losing pairing. Finish a call; the after-call form opens; fill it and the outcome and comment show in call history. Skip one; it stays on the needs-comment list and the manager sees it.

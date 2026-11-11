@@ -2,7 +2,7 @@
 
 This is the one place for overall status, the order of work, the rules everyone follows, and the decisions the owner has made. Each milestone's full detail (flow diagram, worked example, tasks, tests, data, open questions) lives in its own spec under [docs/milestones/](milestones/README.md). Every table and route, existing and planned, is listed in [data-model-and-api.md](data-model-and-api.md). The why behind the design is in [requirements-and-hld.md](requirements-and-hld.md). Read this file first, then the spec for the milestone you are working on.
 
-Last updated: 7 November 2026.
+Last updated: 11 November 2026.
 
 ## How the plan is organised
 
@@ -14,20 +14,26 @@ Last updated: 7 November 2026.
 
 Arrows mean "must be Done before the next one starts". Recordings come last on the owner's instruction (7 November 2026).
 
+The core tracker is the working call-history + reports flow. The product extension layer is the Callyzer-style operational and business features: phone health, recording coverage, daily summaries and CRM/API integration. These are included in the roadmap and kept in the design even though they are not required for the first demo.
+
 ```mermaid
 flowchart LR
   M0["M0 Foundation<br/>built; phone and CI checks left"]:::review
   M1["M1 Install and call history<br/>built; real-phone demo left (E1)"]:::review
-  M2["M2 Call reports"]:::todo
+  P1["P1 MariaDB and<br/>many companies"]:::todo
+  M2["M2 Call reports<br/>paused for P1"]:::todo
   M3["M3 Daily email report"]:::todo
   M4["M4 Phone health<br/>and app updates"]:::todo
-  M5["M5 CRM integration<br/>waits on the CRM code (E3)"]:::todo
+  M5["M5 CRM integration<br/>CRM code in GitHub (E3 part)"]:::todo
   M6["M6 Call recordings"]:::todo
-  M7["M7 Deploy to the VPS<br/>waits on E4"]:::todo
+  M7["M7 Deploy to Hostinger<br/>callit.reaplift.com"]:::todo
   M8["M8 Pilot"]:::todo
+  M9["M9 Call from the app"]:::todo
 
   M0 --> M1
   M0 --> M7
+  P1 --> M2
+  P1 --> M7
   M1 --> M2
   M1 --> M4
   M2 --> M3
@@ -37,13 +43,15 @@ flowchart LR
   M5 --> M8
   M6 --> M8
   M7 --> M8
+  M4 --> M9
+  M5 --> M9
 
   classDef done fill:#d4f7dc,stroke:#2e7d32,color:#000
   classDef review fill:#c8e6ff,stroke:#1565c0,color:#000
   classDef todo fill:#eeeeee,stroke:#888,color:#000
 ```
 
-Next in order: M2 (call reports), while waiting for test phones (E1) to finish M0 and M1. M7 can be built alongside M1 to M6 once the VPS exists (E4).
+Next in order: P1 (move to MariaDB and serve many companies, decisions D10 and D11), then M2 continues on MariaDB, while waiting for test phones (E1) to finish M0 and M1. P1 is a platform change, not a flow; it is done first because every new M2 query written for PostgreSQL would have to be moved too. M7 can be built alongside M2 to M6 once P1 is done.
 
 ## Status board
 
@@ -53,13 +61,29 @@ Update your row in the same commit that changes a task's status.
 | --- | --- | --- | --- | --- | --- |
 | [M0](milestones/m0-foundation/spec.md) Foundation | A developer clones the repo, runs the server, panel and an Android debug build locally; CI checks every push | Built on 7 November 2026 ([test-evidence.md](milestones/m0-foundation/test-evidence.md)); Done after the APK reaches the server from a real phone and CI runs on GitHub | unassigned | none | none |
 | [M1](milestones/m1-install-and-call-history/spec.md) Install and call history | Admin adds an employee; the employee installs the APK from a QR code and pairs it; their company-SIM calls appear in the panel's call history | Built on 8 November 2026; run end to end on the Android 15 emulator ([test-evidence.md](milestones/m1-install-and-call-history/test-evidence.md)). Done after the real-phone demo (E1) and release signing | unassigned | M0 | E1 (test phones) |
-| [M2](milestones/m2-call-reports/spec.md) Call reports | Admin and managers see every report in the HLD's section 6, with filters, and the numbers match a hand count | In progress (manager access and report summary foundation added) | unassigned | M1 | none |
+| [P1](milestones/p1-mariadb-and-companies/spec.md) MariaDB and many companies | The server runs on MariaDB (Hostinger shared hosting); every company's data is kept apart by `company_id`; a super admin manages companies | Planned; spec waiting for owner review (11 November 2026) | unassigned | none | none |
+| [M2](milestones/m2-call-reports/spec.md) Call reports | Admin and managers see every report in the HLD's section 6, with filters, and the numbers match a hand count | In progress (manager access and report summary foundation added); paused until P1 is done | unassigned | M1, P1 | none |
 | [M3](milestones/m3-daily-email/spec.md) Daily email report | Every morning admins and managers get yesterday's report by email | Not started | unassigned | M2 | E5 (email sender) |
 | [M4](milestones/m4-phone-health-and-updates/spec.md) Phone health and updates | The panel shows which phones are healthy, silent or misconfigured; the app updates itself; the employee can add a note after a call | Not started | unassigned | M1 | E1 |
 | [M5](milestones/m5-crm-integration/spec.md) CRM integration | The CRM shows call history and reports for its employees through our API, and receives a webhook per call | Not started | unassigned | M2 | E3 (CRM code and access) |
 | [M6](milestones/m6-call-recordings/spec.md) Call recordings | A company-SIM call's recording is uploaded and played in the panel; a missing recording is flagged and the employee is told | Not started | unassigned | M4 | E1, E2 (phone survey), E6 (storage) |
-| [M7](milestones/m7-deploy/spec.md) Deploy | A push to `main` deploys to the Hostinger VPS with HTTPS, a health check, rollback and tested backups | Not started | unassigned | M0 | E4 (VPS, domain), E6 |
-| [M8](milestones/m8-pilot/spec.md) Pilot | Five employees, then everyone, use it for two weeks with no gaps a manager notices | Not started | ReapLift | M3, M5, M6, M7 | E1 to E6 |
+| [M7](milestones/m7-deploy/spec.md) Deploy | A push to `main` deploys to `callit.reaplift.com` (Hostinger shared hosting, Node.js web app) with HTTPS, a health check, rollback and tested backups | Not started | unassigned | M0, P1 | E4 (domain done; MariaDB database), E6 |
+| [M8](milestones/m8-pilot/spec.md) Pilot | Five employees, then everyone, use it for two weeks with no gaps a manager notices | Not started | ReapLift | M3, M5, M6, M7 | E1 to E7 (E7: legal sign-off) |
+| [M9](milestones/m9-call-from-app/spec.md) Call from the app | The employee taps a number in the app (a CRM lead or a typed number); the phone's dialer calls it on the company SIM; the "call is recorded" line shows first; the after-call form opens after | Not started | unassigned | M4, M5 | E1 |
+
+### Product extension set we keep in scope
+
+The tracker is intentionally broader than the first smoke-test flow. The following operational and business features are part of the long-term product and are explicitly kept in the design so they can be added later without redesigning the core system:
+
+- Phone health: silent phones, battery/autostart issues, offline checks, app-status warnings, and per-device health pages.
+- Recording coverage: matched call-to-recording status, missing-recording flags, and the recording player with audit events.
+- Daily report email: manager and admin summaries by day, including connect rate and missed/no-answer counts.
+- CRM/API integration: webhook delivery, report endpoints, and the CRM-facing call history pages that mirror the panel.
+- Drill-down views: per employee, per number, and per report detail pages to support deeper call review.
+- After-call form: outcome, comment and follow-up date right after each call, with a needs-comment list (M4, owner, 11 November 2026).
+- Later extension, not in the current plan: AI call summary in the dashboard, after M6 (owner, 11 November 2026; HLD section 5).
+
+These features are part of the product roadmap, but they are not required to prove the first working call-tracker flow on a real phone.
 
 ## Dependency rule
 
@@ -71,10 +95,11 @@ Update your row in the same commit that changes a task's status.
 | --- | --- | --- | --- | --- |
 | E1 | Test phones: at least one Samsung, one Oppo and one Vivo, each with a SIM, on Android 10 or newer, and a second SIM to prove personal calls are never uploaded | ReapLift | M1 demo, M4, M6 | Not started |
 | E2 | Phone survey of all employees: brand, model, Android version, default dialer, whether auto-record exists. Employees can send a screenshot of the app's setup screen (M1 shows brand, Android version and dialer) | ReapLift | M6, and the company-phone purchase | Not started (owner, 7 November 2026) |
-| E3 | The CRM's code, a test copy of it, and a way to deploy pages to it | ReapLift | M5 | Owner to share |
-| E4 | A Hostinger VPS and a domain or subdomain for the server, for example `calls.reaplift.com` | ReapLift | M7 | Not started |
+| E3 | The CRM's code, a test copy of it, and a way to deploy pages to it | ReapLift | M5 | Partly met (11 November 2026): live code from Hostinger is in GitHub `reaplift/crm-laravel`, branch `sync-from-hostinger` (PR #1). Test copy and a deploy route still needed |
+| E4 | A domain for the server and a MariaDB database on the existing Hostinger shared plan (D10; no VPS) | ReapLift | M7 | Partly met (11 November 2026): `callit.reaplift.com` created; DNS is on Cloudflare. Node.js web app and database still to set up (P1.6) |
 | E5 | An email sender for reports, for example Hostinger SMTP for `reaplift.com` | ReapLift | M3 demo | Not started |
-| E6 | An object-storage account (Cloudflare R2 or AWS S3 Mumbai) for recordings and backups | ReapLift | M6 demo, M7 backups | Not started |
+| E7 | Legal sign-off before real employees' data is collected: the consent text, an employee policy, and for client companies (D11) the agreement on who is responsible for the data under the DPDP Act 2023 (Q4, Q9). Installing by APK does not remove this. Test phones used by ReapLift staff who agree in writing do not need it | ReapLift (HR or legal) | M8 pilot, and any use with real employees before it | Not started |
+| E6 | An object-storage account (Cloudflare R2 or AWS S3 Mumbai) for recordings and backups | ReapLift | M6 demo, M7 backups | Partly met: ReapLift has a Cloudflare account (R2 bucket to create at M6) |
 
 ## Decisions that need the owner
 
@@ -87,12 +112,25 @@ Each has a default, so work does not stop; the default is built unless the owner
 | D3 | How many days of past calls to sync when a phone is paired | 7 days | M1 task 1.5 |
 | D4 | Retention: how long recordings and call rows are kept | Recordings 12 months; call rows indefinitely | M6, M7 |
 | D5 | Our own admin panel as well as the CRM pages? | Yes: our panel for admins and managers from M1; the CRM gets the same data through the API in M5 | M1 |
-| D6 | Object storage: Cloudflare R2 or AWS S3 Mumbai | R2 (no download fees, which suits playing recordings) | M6, M7 |
+| D6 | Object storage: Cloudflare R2 or AWS S3 Mumbai | **Decided: Cloudflare R2** on ReapLift's existing account (owner, 11 November 2026) | M6, M7 |
 | D7 | Lowest Android version supported | Android 10 | M0, M1 |
 | D8 | Shortest call that must have a recording, below which a missing one is not flagged | 5 seconds | M6 |
 | D9 | Recordings over mobile data, or Wi-Fi only? | Any network | M6 |
 
 ## Decision log
+
+### 11 November 2026
+
+- **D10, hosting and database (owner):** the service runs on ReapLift's **existing Hostinger shared hosting plan** as a Node.js web app at `callit.reaplift.com`, the way `billit.reaplift.com` already runs, with a **MariaDB** database on the same plan. This replaces "own Hostinger VPS with PostgreSQL" (7 November). Why: no extra cost; one kind of database with the CRM (MySQL) and the team already knows it; data stays on Hostinger in India. Checked over SSH: Node 22 is available, MariaDB is 11.8, apps are started on request and stopped when idle, and outbound connections work. Consequences: the worker and scheduler run from hPanel cron instead of always running. **No other hosting provider and no PostgreSQL (owner, 11 November 2026):** the budget is the current Hostinger plan; if the database or load grows, ReapLift upgrades within Hostinger (a bigger plan or more storage). Recording audio (M6) is the one exception: it is about 1.5 TB a year, more than the plan's 200 GB, so it is stored in **Cloudflare R2** on the account ReapLift already has (owner, 11 November 2026; settles D6). Our database is **separate** from the CRM's (`u436365342_reapLiftCrm`); the CRM reads our data only through the API (M5).
+- **D11, many companies (owner):** the tracker serves ReapLift's client companies (for example BSNL and Country Roads), the same companies the CRM serves with its `company_id`. Each company's own employees install the app. Every company-data table carries `company_id`, using the CRM's number for the company; a super admin (ReapLift) manages companies. This replaces "one company only, no `client_id`" (7 November). Each company SIM number belongs to exactly one employee in one company (owner, 11 November 2026). A person working for two companies would need a separate SIM per company, which is not built until a real case appears.
+- **D12, legal sign-off per company and per employee (owner):** no phone is tracked until three things are recorded in the tracker itself: (1) the company's signed agreement with ReapLift, recorded by the super admin; (2) the employee's signed call-tracking policy, recorded by the company's admin; (3) the employee's in-app consent to the company's own consent text, which is versioned and served by the server. The server refuses pairing codes and sync until they exist. A new consent version pauses sync until accepted; withdrawing consent unpairs the phone. Each company has a consent register CSV as proof. Built in P1.8. This is on top of E7: legal still has to approve the texts and agreements before real employees use the app.
+- **D13, company SIM use and customer notice (owner):** employees are told in writing not to use the company SIM for personal calls. Customers are told at the start of each call that calls are recorded and monitored for quality; the employee says it (the supported dialers do not announce it), and it goes in each company's privacy notice. This replaces Q5's assumption that customers are not told. The phone's personal-SIM filter is unchanged: a policy cannot stop personal calls on a personal SIM.
+- **After-call form (owner):** M4's "note after a call" becomes an after-call form with outcome, comment and follow-up date, a needs-comment list and reminders.
+- **AI call summary (owner):** a later extension, not part of the current plan or the first launch. What is wanted is like Zoom's meeting summary: after each recorded call, a short summary, key points and next steps on the call's page in the dashboard.
+- **D14, every company-SIM call is uploaded (owner):** no matching against CRM leads or contact lists. Clients' friends and contacts often call directly from numbers that are not leads, and an inner join with leads would lose them. Leads are linked to calls later as a left join for display (M5). Calls on the personal SIM are still never uploaded (CLAUDE.md's privacy rule, unchanged). The built app already works this way; the HLD, M1 and M5 specs were corrected.
+- **M9, call from the app (owner):** the employee taps a number in our app and the phone's own dialer places the call on the company SIM, so the dialer's recording keeps working. Our app does **not** become the phone's default dialer, because on most phones that stops the brand's auto-record. The app shows the "this call is recorded" line (D13) before dialling and opens the after-call form (M4) when the call ends.
+- **Migrations exception:** because nothing is deployed and there is no real data, P1 replaces migrations 0001 to 0003 with MariaDB versions instead of adding new files. The rule "never edit a merged migration" applies again from P1 onwards.
+- **The CRM, found on the server:** a Laravel app at `public_html/crm` (served as `crm.reaplift.com`), sharing the database `u436365342_reapLiftCrm` with superadmin, HRMS, bookings and kstewdbooking. Each CRM user has one `company_id`, which is the user ID of the person who registered the company. The CRM's own cleanup (hardcoded passwords, employee documents in git history) is tracked in the CRM repo's PR #1, not here.
 
 ### 8 November 2026
 
@@ -103,14 +141,14 @@ Each has a default, so work does not stop; the default is built unless the owner
 
 ### 7 November 2026
 
-- **Build our own Callyzer-style product** for ReapLift's own employees only, focused on detailed call history and call reports. Lead management is not in scope (D1 asks to confirm). Not sold to other companies, so one company, no billing, no `client_id`.
+- *(Superseded by D11 on 11 November 2026: the tracker serves ReapLift's client companies.)* **Build our own Callyzer-style product** for ReapLift's own employees only, focused on detailed call history and call reports. Lead management is not in scope (D1 asks to confirm). Not sold to other companies, so one company, no billing, no `client_id`.
 - **Android only, installed as an APK**, not from the Play Store. Play's call-log permission needs a declaration and review, which an APK avoids; it also allows full file access for recordings.
 - **Company SIMs in employees' personal phones.** Only company-SIM calls ever leave the phone, filtered on the phone (CLAUDE.md's privacy rule).
 - **Recordings are compulsory** for employees and in the first version, as the **last** milestone (M6). The phone's dialer records; the app uploads. A connected call with no recording is flagged and the employee is told.
 - **The Google dialer is not supported for recordings** (its files are not readable by other apps, per telecrm and Salestrail; to confirm on a real phone). Employees on it switch dialer where possible; otherwise ReapLift gives them a company phone. Most employees are on Oppo, Vivo and Samsung.
 - **No working hours**: marketing calls are made at any time. "Working hours" in reports is active time, from an employee's first call to their last each day; hourly reports cover all 24 hours. HLD section 6.
 - **New repository `reaplift-call-tracker`**, separate from `reaplift-bsp`, on the same stack.
-- **Hosting**: the CRM is PHP and MySQL on Hostinger shared hosting, so our service runs on its own Hostinger VPS (M7); recordings in object storage (D6). The CRM calls our API (M5).
+- *(Superseded by D10 on 11 November 2026: shared hosting and MariaDB.)* **Hosting**: the CRM is PHP and MySQL on Hostinger shared hosting, so our service runs on its own Hostinger VPS (M7); recordings in object storage (D6). The CRM calls our API (M5).
 - **Size**: 50 employees today, up to 100.
 
 ## Rules for every milestone
@@ -157,6 +195,7 @@ Claim a number before writing the file.
 
 | Number | File | Milestone and task | State |
 | --- | --- | --- | --- |
-| 0001 | `0001_init.sql` | M0 | Written (uncommitted) |
-| 0002 | `0002_employees_devices_calls.sql` | M1 | Written (uncommitted) |
-| 0003 | next free | | Free |
+| 0001 | `0001_init.sql` | M0 | Committed (PostgreSQL); rewritten for MariaDB in P1 |
+| 0002 | `0002_employees_devices_calls.sql` | M1 | Committed (PostgreSQL); rewritten for MariaDB in P1, with `company_id` |
+| 0003 | `0003_reports_m2.sql` | M2 | Committed (PostgreSQL); rewritten for MariaDB in P1, with `company_id` |
+| 0004 | next free (P1's `companies` table goes into the rewritten 0001) | | Free |

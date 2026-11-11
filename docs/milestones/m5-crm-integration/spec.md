@@ -7,7 +7,7 @@
 
 ## Outcome
 
-ReapLift's CRM shows each employee's call history and the call reports, using our integration API with an API key, the way it would use Callyzer's. The CRM pushes its employees to us so admins do not type them twice, and receives a webhook for every synced call that qualifies as a valid work event. Private calls, personal-SIM calls and unrelated numbers are not stored or reported, and the CRM only ever sees call data that passed the tracker privacy gate and the business validation rule.
+ReapLift's CRM shows each employee's call history and the call reports, using our integration API with an API key, the way it would use Callyzer's. The CRM pushes its employees to us so admins do not type them twice, and receives a webhook for every synced company-SIM call. Personal-SIM calls never reach our server, so the CRM never sees them. Calls are linked to the CRM's leads where the number matches, for display only: a call with no matching lead is still kept and shown (D14).
 
 This spec is finished after reading the CRM's code; the parts below are what does not depend on it.
 
@@ -26,15 +26,15 @@ flowchart LR
 
 ## Worked example
 
-The CRM sends Ravi as `{ crmEmployeeId: "E-1042", name: "Ravi Kumar", companyNumber: "919812345678", team: "North" }`; our existing Ravi is linked to `E-1042` because the number matches. Ravi's CRM customer list contains `919900011111` and a demo lead at `918800022222`, so only calls to those business numbers are kept for reporting. A personal call to `917000033333` on the same company SIM is never uploaded or sent to the CRM because it fails the business validation rule. The CRM's Call Reports page calls `POST /v1/reports/employees` for last week and shows Ravi's row with the same figures as our panel. Ravi's next valid work call produces a `call.synced` webhook to the CRM within a minute.
+The CRM sends Ravi as `{ crmEmployeeId: "E-1042", name: "Ravi Kumar", companyNumber: "919812345678", team: "North" }`; our existing Ravi is linked to `E-1042` because the number matches. Ravi's CRM customer list contains `919900011111` and a demo lead at `918800022222`, so only calls to those business numbers are kept for reporting. A call from `917000033333`, a client's friend who is not a lead, is kept and shown with no lead linked (D14). A call on Ravi's personal SIM never reaches our server. The CRM's Call Reports page calls `POST /v1/reports/employees` for last week and shows Ravi's row with the same figures as our panel. Ravi's next valid work call produces a `call.synced` webhook to the CRM within a minute.
 
 ## Scope
 
-In: API keys (hashed, shown once), the `/v1` API listed in [data-model-and-api.md](../../data-model-and-api.md), rate limiting, webhooks with signing and retries, employee push from the CRM, an OpenAPI document generated from the Zod schemas, the CRM-side PHP pages (after E3), and the business validation rule that only CRM-linked or approved business numbers are retained for history and reports.
+In: API keys (hashed, shown once), the `/v1` API listed in [data-model-and-api.md](../../data-model-and-api.md), rate limiting, webhooks with signing and retries, employee push from the CRM, an OpenAPI document generated from the Zod schemas, the CRM-side PHP pages (after E3), and linking calls to CRM leads by number for display (a left join: calls with no lead are kept).
 
 Out: CRM changes unrelated to calls; leads (D1).
 
-The tracker and CRM together enforce a two-step rule: first the phone drops any call not on the chosen company SIM; then the CRM-aware business layer keeps only calls mapped to a valid work contact or assigned lead/customer record. Private calls, personal-SIM calls and unrelated numbers are excluded before the CRM sees them.
+Only one filter applies: the phone drops any call not on the chosen company SIM. There is no lead or contact filter (D14, 11 November 2026); matching a call to a CRM lead is a left join for display, so calls from numbers that are not leads (for example a client's friend) are kept.
 
 ## Tasks
 
@@ -58,5 +58,5 @@ Migration: `api_keys`, `webhooks`, `webhook_deliveries`, `employees.crm_employee
 ## Demo (milestone acceptance)
 
 1. In the CRM's test copy, push employees; they appear linked in our panel.
-2. The CRM's Call Reports page shows the same figures as our panel for the same period, but only for valid business calls; a personal or unrelated call is absent from both the panel and the CRM.
-3. A valid work call on a test phone produces a webhook the CRM records; stopping the CRM's endpoint makes deliveries retry and then succeed when it returns.
+2. The CRM's Call Reports page shows the same figures as our panel for the same period, for company-SIM calls, including calls from numbers that are not CRM leads; a personal-SIM call is absent from both.
+3. A company-SIM call on a test phone produces a webhook the CRM records; stopping the CRM's endpoint makes deliveries retry and then succeed when it returns.

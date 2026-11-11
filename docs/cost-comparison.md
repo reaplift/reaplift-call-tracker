@@ -2,6 +2,8 @@
 
 Worked out on 7 November 2026 for the owner. The estimates are rough; the inputs are listed so they can be changed.
 
+> **11 November 2026 (D10):** the server now runs on ReapLift's existing Hostinger shared plan, so the VPS cost below (about ₹1,000 to ₹1,600 a month) drops to ₹0 unless recordings later need a VPS. Object storage for recordings still costs as estimated.
+
 ## Actual bill (owner, 7 November 2026)
 
 **ReapLift pays Callyzer about ₹1.5 lakh a year** (about ₹12,500 a month), which is far below the recording-storage estimates further down. Those estimates assume more storage than ReapLift really uses, or features it does not have (likely the API add-on). The invoice's breakdown (numbers, plan, storage, add-ons) is needed to redo this page.

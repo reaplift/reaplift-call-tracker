@@ -4,28 +4,33 @@ Written 7 November 2026, from the owner's discussion of that day and a study of 
 
 ## 1. Background
 
-ReapLift's employees make sales and marketing calls on company-issued SIMs. Managers cannot see today who called whom, for how long, or what was said. Callyzer sells exactly this, with an Android app that syncs each phone's call log and recordings to a dashboard. ReapLift will build its own, for its own employees, and show it inside its existing CRM.
+The employees of ReapLift's client companies (for example BSNL and Country Roads, the companies its CRM serves) make sales and marketing calls on company-issued SIMs. Managers cannot see today who called whom, for how long, or what was said. Callyzer sells exactly this, with an Android app that syncs each phone's call log and recordings to a dashboard. ReapLift will build its own, for those companies, and show it inside its existing CRM. (Changed on 11 November 2026 from "for ReapLift's own employees" by decision D11.)
 
 ## 2. Goals
 
-- Detailed **call history** for every employee: only valid work calls on the company SIM, filtered to assigned CRM/customer numbers or approved business contacts, with type, time, talk time, ringing time and, from M6, the recording.
-- Detailed **call reports**, covering everything Callyzer's call reports cover (section 6), but only for valid work calls, never personal calls.
+- Detailed **call history** for every employee: **every call on the company SIM** (D14: no matching against CRM leads, because clients' contacts often call from numbers that are not leads), with type, time, talk time, ringing time and, from M6, the recording. Calls on a personal SIM never leave the phone.
+- Detailed **call reports**, covering everything Callyzer's call reports cover (section 6), for company-SIM calls only, never personal-SIM calls.
 - **Easy install**: an employee goes from "never heard of it" to "tracking on" in a few minutes, with no Play Store and no help from IT.
-- **Recordings are compulsory** (from M6): a missing recording is detected, shown to the manager and the employee is told, but only for valid work calls.
+- **Operational visibility**: detect silent or unhealthy phones, surface battery/autostart issues, and show which devices are still syncing normally.
+- **Recordings are compulsory** (from M6): a missing recording is detected, shown to the manager and the employee is told, for company-SIM calls.
+- **Daily summaries**: each morning managers and admins receive a concise view of yesterday's calls, no-answer rate and connected calls.
 - The CRM shows all of this through our API, like a CRM would use Callyzer's.
 
-Not goals (owner, 7 November 2026): lead management, lead reports, selling the product to other companies, iOS.
+- **Many companies** (D11): each company's data is kept apart, and each company's admins and managers see only their own company.
+
+Not goals (owner, 7 November 2026): lead management, lead reports, iOS. Billing and per-company plans are not planned. (Selling to other companies was a not-goal until D11 on 11 November 2026; the tracker now serves the CRM's client companies.)
 
 ## 3. Users and roles
 
 | Who | What they do | Where |
 | --- | --- | --- |
-| Admin | Adds employees, pairs phones, sees everything, manages settings | Admin panel (`apps/web`) |
-| Manager | Sees call history, reports and recordings for their own teams | Admin panel; later the CRM |
+| Super admin (ReapLift) | Adds and suspends companies and their first admin; picks a company to see what its admin sees | Admin panel (P1) |
+| Admin | Adds employees, pairs phones, sees everything in **their company**, manages its settings | Admin panel (`apps/web`) |
+| Manager | Sees call history, reports and recordings for their own teams in their company | Admin panel; later the CRM |
 | Employee | Installs the app, pairs it, makes calls as normal; sees what was synced | Android app |
 | CRM | Reads reports and history, receives webhooks | Integration API (M5) |
 
-Managers arrive in M2, with teams. M1 has admins only.
+Managers arrive in M2, with teams. M1 has admins only. Super admins and companies arrive in P1.
 
 ## 4. Facts that shape the design
 
@@ -37,17 +42,19 @@ Managers arrive in M2, with teams. M1 has admins only.
 | Installed as an **APK**, not from the Play Store (owner) | No Play review of the call-log permission; the app updates itself (M4); full file access is allowed for recordings (M6) |
 | Android does not let ordinary apps record call audio | The phone's own dialer records; our app uploads its files (M6) |
 | The Google dialer keeps its recordings where other apps cannot read them (reported by telecrm and Salestrail; to confirm on a real phone) | Phones on the Google dialer switch dialer (for example ODialer on Oppo-family phones) or get a company phone (owner) |
-| The CRM is PHP and MySQL on Hostinger **shared hosting** | Our service runs on its own Hostinger VPS (M7); the CRM calls our API |
+| The CRM is PHP and MySQL on Hostinger **shared hosting**, and the plan runs Node.js apps (D10) | Our service runs on the same shared plan as a Node.js web app with its own MariaDB database (M7); the CRM calls our API |
+| The CRM serves several client companies, each with a `company_id` (D11) | Every company-data table carries the same `company_id` |
 | **No working hours**: marketing calls can be made at any time (owner) | Reports never assume office hours (section 6) |
 
-### Design rule: not every call from the phone is stored
+### Design rule: every company-SIM call is stored, nothing else
 
-The tracker is not a full "all phone calls" logger. It only stores calls that are both:
+Decision D14 (owner, 11 November 2026) replaces the earlier rule that a call also had to match a CRM lead or approved contact list.
 
-1. on the employee's chosen company SIM, and
-2. linked to a valid work context such as an assigned CRM/customer number or another approved business contact list
-
-Private calls, personal-SIM calls, unassigned numbers, and irrelevant call patterns are filtered before upload and never stored. The same rule applies to recordings: recordings are created and uploaded only for valid work calls that passed this check.
+- **Every call on the employee's chosen company SIM is uploaded and stored**, whoever the other number is. Clients' friends and contacts often call directly from numbers that are not leads; matching against leads (an inner join) would lose those calls.
+- **Calls on the personal SIM never leave the phone** (CLAUDE.md's privacy rule, unchanged). The phone filters them before anything is stored for upload.
+- Employees are told in writing not to use the company SIM for personal calls, and customers are told calls are recorded (D13).
+- Recordings follow the same rule: every company-SIM call's recording; no recording that does not match a company-SIM call is opened or uploaded.
+- Linking a call to a CRM lead is done later as a **left join** for display (M5): calls with no matching lead are still kept and shown.
 
 ## 5. Scope
 
@@ -57,11 +64,15 @@ Private calls, personal-SIM calls, unassigned numbers, and irrelevant call patte
 - Admin panel: login, employees, teams, phone pairing, call history with filters and CSV export, all reports, device health, recording player, settings.
 - Daily email report.
 - Integration API and webhooks for the CRM, and the CRM's Call Reports pages.
-- Hosting on a Hostinger VPS, recordings in object storage, backups.
+- Hosting on Hostinger shared hosting (D10), recordings in object storage, backups.
+- Many companies, with a super admin (P1, D11).
+- Operational visibility for silent or unhealthy phones, including auto-update and bad-battery symptoms, so managers know when a phone stopped reporting data.
+- Recording coverage and playback views for company-SIM calls.
 
 ### Later, not planned
 
-- Click-to-call from the app or CRM (places the call on the company SIM and links it to a CRM contact).
+- Click-to-call from the CRM's web page. (Calling from the app is now planned as M9, owner, 11 November 2026: the app starts the call and the phone's own dialer places and records it.)
+- **AI call summary** in the dashboard, like Zoom's meeting summary (owner, 11 November 2026: a later extension, not part of the current plan): transcribe each recording (Indian languages and mixed speech), then summarise it with key points and next action. Needs recordings (M6), legal approval for sending recordings to an AI provider, and a cost check, because transcription is charged per minute of talk.
 - WhatsApp call tracking.
 - A calling provider (Exotel, Knowlarity and similar) for phones that cannot record.
 - Leads.
@@ -101,10 +112,10 @@ flowchart LR
     CL --> APP
     DR -. "M6" .-> APP
   end
-  subgraph VPS["Hostinger VPS (M7)"]
-    API["Server MODE=api<br/>(Fastify)"]
-    WK["MODE=worker / scheduler<br/>(daily totals, email, webhooks)"]
-    DB[("PostgreSQL 16")]
+  subgraph VPS["Hostinger shared hosting, callit.reaplift.com (M7)"]
+    API["Server MODE=api<br/>(Fastify, Node.js web app)"]
+    WK["MODE=worker / scheduler<br/>run by hPanel cron<br/>(daily totals, email, webhooks)"]
+    DB[("MariaDB 11.8<br/>own database, company_id on every row")]
     API --- DB
     WK --- DB
   end
@@ -120,7 +131,8 @@ flowchart LR
 ```
 
 - One server program; `MODE` picks what runs, as in `reaplift-bsp`.
-- PostgreSQL holds everything except audio. Background work uses a PostgreSQL job table; no Redis or queue service.
+- MariaDB holds everything except audio (PostgreSQL until P1). Background work uses a job table in the same database; no Redis or queue service. On shared hosting the API is started on request and stopped when idle, so the worker and scheduler run as short commands from hPanel cron (D10).
+- Our database is separate from the CRM's. The CRM reads our data only through the integration API, where the company and role rules are applied (M5).
 - The admin panel is ours, so every milestone can be demonstrated without the CRM. The CRM gets the same data through the integration API in M5 (decision D5).
 
 ## 8. Android app
@@ -185,10 +197,10 @@ No contacts permission: the call log already carries the cached contact name.
 
 ## 9. Data
 
-- Call rows are small (under 1 KB). 50 employees at about 150 calls a day is about 7,500 calls a day, 2.7 million a year: a few GB in PostgreSQL.
+- Call rows are small (under 1 KB). 50 employees at about 150 calls a day is about 7,500 calls a day, 2.7 million a year: a few GB in MariaDB. This grows with each company added; 200 GB of disk on the shared plan covers years of call rows (recordings are in object storage).
 - Recordings are about 0.5 MB a minute. 50 employees at about 4 hours of talk a day is about 6 GB a day, 1.5 TB a year.
 - Retention (decision D4): call rows kept indefinitely; recordings 12 months, then deleted by a storage lifecycle rule.
-- Backups (M7): nightly PostgreSQL dumps copied off the VPS to object storage, kept 30 days, with a restore tested.
+- Backups (M7): nightly database dumps copied off Hostinger to object storage, kept 30 days, with a restore tested, as well as Hostinger's own backups.
 
 ## 10. Security and privacy
 
@@ -197,14 +209,16 @@ No contacts permission: the call log already carries the cached contact name.
 - Integration API (M5): API keys stored hashed; webhooks signed with HMAC-SHA256.
 - Recordings (M6): private bucket, encrypted at rest; the panel plays them through links that expire after 5 minutes; every play is written to the audit log.
 - Consent stored per device. The employee's app shows exactly what was synced.
+- Legal sign-off (D12): each company's signed agreement, each employee's signed policy, and each employee's in-app consent to their company's versioned consent text are all recorded, and the server refuses pairing and sync until they exist. Withdrawing consent unpairs the phone. A consent register per company is the proof.
+- Companies (D11): every query is limited to one company by the server; a device writes only into its own company; tests prove one company cannot see another's data.
 - India's DPDP Act 2023: consent, purpose (work calls on the company SIM), retention and the employee's view are designed in; ReapLift should have its policy checked (Q4 in open-questions.md).
 
 ## 11. Hosting
 
 | Part | Where | Milestone |
 | --- | --- | --- |
-| Server, worker, PostgreSQL | One Hostinger VPS, Docker Compose, HTTPS | M7 |
-| Recordings and backups | Cloudflare R2 or AWS S3 Mumbai (decision D6) | M6, M7 |
+| Server, worker, MariaDB | Hostinger shared hosting (the existing plan): Node.js web app at `callit.reaplift.com`, hPanel cron, a MariaDB database, HTTPS. DNS in Cloudflare. If it grows, ReapLift upgrades within Hostinger; no other host and no PostgreSQL (D10, owner) | M7 |
+| Recordings and backups | Cloudflare R2 on ReapLift's existing account (D6, decided 11 November 2026) | M6, M7 |
 | APK downloads | Served by our server | M1 |
 | CRM | Unchanged, on Hostinger shared hosting | M5 |
 

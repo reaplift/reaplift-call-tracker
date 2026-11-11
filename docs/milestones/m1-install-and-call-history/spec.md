@@ -7,7 +7,7 @@
 
 ## Outcome
 
-An admin adds an employee in the panel and clicks Pair phone. The employee scans a QR code, installs the app, goes through a short setup, and from then on valid work calls on their company SIM appear in the panel's call history within a minute, with type, number, contact name, time, talk time and ringing time. Calls on their personal SIM, private calls and numbers not marked as valid business contacts never leave the phone and are never stored. The admin can filter the history and download it as CSV.
+An admin adds an employee in the panel and clicks Pair phone. The employee scans a QR code, installs the app, goes through a short setup, and from then on every call on their company SIM appears in the panel's call history within a minute, with type, number, contact name, time, talk time and ringing time. Calls on their personal SIM never leave the phone and are never stored. (Changed on 11 November 2026 by D14: there is no matching against business contacts or leads.) The admin can filter the history and download it as CSV.
 
 The owner asked for this to be easy to install (7 November 2026), so the install is measured: a first-time employee should finish setup in under 5 minutes without help.
 
@@ -137,10 +137,10 @@ Out:
 
 ### 1.5 App: call-log sync, outbox, ringing time
 
-- Content observer on the call log plus a WorkManager job every 15 minutes and on boot. Each run reads call-log rows newer than the last one read, keeps only those whose phone account matches the company SIM, and then applies the work-call validation rule before writing them to the outbox (plain SQLite, not Room: Room needs a code generator, KSP, that the week's timetable did not need).
+- Content observer on the call log plus a WorkManager job every 15 minutes and on boot. Each run reads call-log rows newer than the last one read, keeps only those whose phone account matches the company SIM before writing them to the outbox (plain SQLite, not Room: Room needs a code generator, KSP, that the week's timetable did not need).
 - Which call-log rows are the company SIM's: the subscription ID, plus on Android 11+ every calling account Android maps to that SIM. A row with no SIM is accepted only on a single-SIM phone.
-- **Pre-sync validation**: a call must also match a valid business context before it is uploaded or stored. This includes assigned CRM/customer numbers or another approved work list; private calls, personal-SIM calls and unassigned numbers are dropped on the phone before upload and never stored. The server repeats the same validation before final insert.
-- On first pairing, reads the last 7 days (D3) of company-SIM calls that pass the work-call validation rule.
+- **No lead or contact filter** (D14, 11 November 2026): every company-SIM call is kept, whoever the other number is. Personal-SIM calls are dropped on the phone before anything is stored for upload. The built app already works this way.
+- On first pairing, reads the last 7 days (D3) of company-SIM calls.
 - Sends the outbox in batches of up to 200, oldest first; a row leaves the outbox only after the server accepts it. Exponential backoff on failure.
 - Ringing time: the foreground service listens to call-state changes for the company SIM's subscription and stores each call's end time; ringing = (end − start) − talk, or empty if the service was not running.
 - Type mapping: incoming, outgoing, missed, rejected; blocked counts as rejected; voicemail and other types are skipped.

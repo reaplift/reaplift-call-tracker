@@ -6,6 +6,7 @@ Each milestone is one flow and has its own folder with a `spec.md`. Status, orde
 | --- | --- |
 | M0 | [Foundation](m0-foundation/spec.md) |
 | M1 | [Install the app and see call history](m1-install-and-call-history/spec.md) |
+| P1 | [Move to MariaDB and serve many companies](p1-mariadb-and-companies/spec.md) (platform change, before M2 continues) |
 | M2 | [Call reports](m2-call-reports/spec.md) |
 | M3 | [Daily email report](m3-daily-email/spec.md) |
 | M4 | [Phone health and app updates](m4-phone-health-and-updates/spec.md) |
@@ -13,6 +14,7 @@ Each milestone is one flow and has its own folder with a `spec.md`. Status, orde
 | M6 | [Call recordings](m6-call-recordings/spec.md) |
 | M7 | [Deploy](m7-deploy/spec.md) |
 | M8 | [Pilot](m8-pilot/spec.md) |
+| M9 | [Call from the app](m9-call-from-app/spec.md) |
 
 ## What every spec contains, in this order
 
