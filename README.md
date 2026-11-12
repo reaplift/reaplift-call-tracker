@@ -2,6 +2,8 @@
 
 Call history and call reports for ReapLift's employees, from an Android app that syncs calls on their company SIMs (and, from M6, the phone's call recordings). ReapLift's CRM reads the data through our API.
 
+**CRM API (for client companies' CRMs):** [docs/crm-api/README.md](docs/crm-api/README.md), written in Callyzer's API v2.3 documentation layout. Base URL `https://callit.reaplift.com/api/v2.3/`.
+
 Start with [docs/project-tracker.md](docs/project-tracker.md). The design is in [docs/requirements-and-hld.md](docs/requirements-and-hld.md), and the build-versus-Callyzer costs are in [docs/cost-comparison.md](docs/cost-comparison.md).
 
 ## Run it locally (Mac)
