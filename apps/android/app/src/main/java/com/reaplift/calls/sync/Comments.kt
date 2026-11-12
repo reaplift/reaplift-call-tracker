@@ -32,8 +32,8 @@ interface CommentUploader {
 
 /** Which calls the after-call form asks about (M4). */
 object AfterCall {
-    /** Calls that were placed or answered; missed and rejected calls have nothing to report. */
-    val ASKED_TYPES = setOf("incoming", "outgoing")
+    /** Every call, missed and rejected too: a missed call often needs "called back" (client, 11 November 2026). */
+    val ASKED_TYPES = setOf("incoming", "outgoing", "missed", "rejected")
 
     /** Only recent calls get a notification; older ones (for example the first sync after pairing) wait in the list. */
     const val PROMPT_WINDOW_MS = 6 * 60 * 60 * 1000L

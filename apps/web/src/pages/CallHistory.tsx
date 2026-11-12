@@ -17,6 +17,8 @@ interface Filters {
   number: string;
   /** After-call form (M4): '' all, 'no' waiting for a comment, 'yes' with one. */
   commented?: string;
+  /** M6: '' all, 'yes' with a recording, 'missing' flagged as missing. */
+  recording?: string;
 }
 
 /** The filters as the server's call filter: the "to" day is included, so the range ends at the next midnight. */
@@ -33,6 +35,7 @@ export function toQuery(f: Filters): CallQuery {
     maxRing: f.maxRing,
     numbers: f.number,
     commented: f.commented,
+    recording: f.recording,
   };
 }
 
@@ -49,12 +52,25 @@ export function CallHistory() {
     maxRing: '',
     number: '',
     commented: '',
+    recording: '',
   });
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [rows, setRows] = useState<CallRow[]>([]);
   const [next, setNext] = useState<string | null>(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  /** The call whose recording is playing, with its short-lived link. */
+  const [playing, setPlaying] = useState<{ id: number; url: string } | null>(null);
+
+  const play = async (id: number) => {
+    setError('');
+    try {
+      const { url } = await api.recording(id);
+      setPlaying({ id, url });
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Server unreachable');
+    }
+  };
 
   useEffect(() => {
     api.employees().then((r) => setEmployees(r.items), () => {});
@@ -142,6 +158,14 @@ export function CallHistory() {
             <option value="yes">Has a comment</option>
           </select>
         </label>
+        <label>
+          Recording
+          <select value={filters.recording ?? ''} onChange={set('recording')}>
+            <option value="">All calls</option>
+            <option value="yes">Has a recording</option>
+            <option value="missing">Recording missing</option>
+          </select>
+        </label>
         <a className="button secondary" href={`/api/calls/export.csv?${callQueryString(toQuery(filters))}`}>
           Download CSV
         </a>
@@ -157,6 +181,7 @@ export function CallHistory() {
             <th>Talk</th>
             <th>Ring</th>
             <th>Outcome and comment</th>
+            <th>Recording</th>
           </tr>
         </thead>
         <tbody>
@@ -177,7 +202,19 @@ export function CallHistory() {
                 {c.outcome && <strong>{c.outcome}</strong>}
                 {c.note && <div>{c.note}</div>}
                 {c.followUpAt && <div className="muted">Follow up {formatDateTime(c.followUpAt)}</div>}
-                {!c.commentedAt && (c.type === 'incoming' || c.type === 'outgoing') && <span className="muted">No comment yet</span>}
+                {!c.commentedAt && <span className="muted">No comment yet</span>}
+              </td>
+              <td>
+                {c.recording === 'uploaded' &&
+                  (playing?.id === c.id ? (
+                    <audio controls autoPlay src={playing.url} aria-label={`Recording of the call at ${formatDateTime(c.startedAt)}`} />
+                  ) : (
+                    <button className="secondary" onClick={() => play(c.id)}>
+                      ▶ Play
+                    </button>
+                  ))}
+                {c.recording === 'missing' && <span className="error">Missing</span>}
+                {c.recording === 'pending_upload' && <span className="muted">Uploading…</span>}
               </td>
             </tr>
           ))}

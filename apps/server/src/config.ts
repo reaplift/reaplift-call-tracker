@@ -31,9 +31,21 @@ const Env = z.object({
   INITIAL_SYNC_DAYS: positiveInt(7),
   /** The built panel (apps/web/dist) to serve from `/`. Blank locally, where Vite serves the panel. */
   PANEL_DIR: z.preprocess(blankToUndefined, z.string().optional()),
+  /** Call recordings (M6) in Cloudflare R2 (D6), or MinIO locally. All four blank means recordings are off. */
+  S3_ENDPOINT: z.preprocess(blankToUndefined, z.string().url().optional()),
+  S3_REGION: z.preprocess(blankToUndefined, z.string().default('auto')),
+  S3_BUCKET: z.preprocess(blankToUndefined, z.string().optional()),
+  S3_ACCESS_KEY_ID: z.preprocess(blankToUndefined, z.string().optional()),
+  S3_SECRET_ACCESS_KEY: z.preprocess(blankToUndefined, z.string().optional()),
 });
 
 export type Config = z.infer<typeof Env>;
+
+/** The recording store's settings, or null when any of them is missing. */
+export function s3Settings(c: Config) {
+  if (!c.S3_ENDPOINT || !c.S3_BUCKET || !c.S3_ACCESS_KEY_ID || !c.S3_SECRET_ACCESS_KEY) return null;
+  return { endpoint: c.S3_ENDPOINT, region: c.S3_REGION, bucket: c.S3_BUCKET, accessKeyId: c.S3_ACCESS_KEY_ID, secretAccessKey: c.S3_SECRET_ACCESS_KEY };
+}
 
 /** Reads settings from the environment. A `--mode=<mode>` argument overrides MODE. */
 export function loadConfig(env: NodeJS.ProcessEnv = process.env, argv = process.argv): Config {

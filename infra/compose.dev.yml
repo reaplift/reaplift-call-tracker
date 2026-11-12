@@ -22,5 +22,17 @@ services:
       interval: 2s
       retries: 30
 
+  # Local stand-in for Cloudflare R2 (call recordings, M6): SeaweedFS speaks the same S3 protocol.
+  # (MinIO stopped publishing community images in 2025.) No S3 identities are set, so it accepts any key locally.
+  #   docker compose -f infra/compose.dev.yml up -d s3
+  s3:
+    image: chrislusf/seaweedfs:3.80
+    command: server -s3 -s3.port=8333 -dir=/data -volume.max=0
+    ports:
+      - '9010:8333'
+    volumes:
+      - s3data:/data
+
 volumes:
   mariadbdata:
+  s3data:

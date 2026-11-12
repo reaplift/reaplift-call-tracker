@@ -132,8 +132,8 @@ export interface PairingCodeResponse {
   qrSvg: string;
 }
 
-/** Call types the after-call form asks about: calls that were placed or answered (M4). */
-export const COMMENT_EXPECTED_TYPES = ['incoming', 'outgoing'] as const;
+/** Call types the after-call form asks about: every call, missed and rejected too (client, 11 November 2026). */
+export const COMMENT_EXPECTED_TYPES = CALL_TYPES;
 
 export interface CallOutcome {
   id: string;
@@ -191,6 +191,40 @@ export interface CallRow {
   note: string | null;
   followUpAt: string | null;
   commentedAt: string | null;
+  /** M6: null when the phone has not reported on this call's recording yet. */
+  recording: RecordingStatus | null;
+}
+
+export const RECORDING_STATUSES = ['pending_upload', 'uploaded', 'missing'] as const;
+export type RecordingStatus = (typeof RECORDING_STATUSES)[number];
+
+/** Recordings longer than this are refused; four hours of phone audio is well under it. */
+export const MAX_RECORDING_BYTES = 300 * 1024 * 1024;
+
+/** POST /device/v1/recordings/upload-url (M6). */
+export const RecordingUploadRequest = z
+  .object({
+    deviceCallId: z.string().min(1).max(64),
+    sizeBytes: z.number().int().positive().max(MAX_RECORDING_BYTES),
+    mimeType: z.string().regex(/^audio\/[a-z0-9.+-]+$/i).max(100),
+    audioSeconds: z.number().int().min(0).max(86_400).nullable().optional(),
+    /** How sure the phone is that this file is this call's recording, 0 to 100. */
+    matchScore: z.number().int().min(0).max(100).nullable().optional(),
+  })
+  .strict();
+
+export interface RecordingUploadResponse {
+  uploadUrl: string;
+  expiresAt: string;
+  /** Send exactly these headers with the PUT. */
+  headers: Record<string, string>;
+}
+
+export const RecordingCallRef = z.object({ deviceCallId: z.string().min(1).max(64) }).strict();
+
+export interface RecordingPlayResponse {
+  url: string;
+  expiresAt: string;
 }
 
 export interface Page<T> {

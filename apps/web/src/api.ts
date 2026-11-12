@@ -1,4 +1,4 @@
-import type { CallRow, Employee, Page, PairingCodeResponse } from '@reaplift/calls-shared';
+import type { CallRow, Employee, Page, PairingCodeResponse, RecordingPlayResponse } from '@reaplift/calls-shared';
 
 export interface User {
   id: string;
@@ -45,6 +45,8 @@ export interface CallQuery {
   numbers?: string;
   /** `no`: placed or answered calls waiting for the after-call form (M4); `yes`: calls with one. */
   commented?: string;
+  /** M6: `yes` calls with a recording, `missing` calls flagged as missing one. */
+  recording?: string;
   cursor?: string;
 }
 
@@ -77,5 +79,7 @@ export const api = {
   pairingCode: (id: string) => request<PairingCodeResponse>('POST', `/api/employees/${id}/pairing-code`),
   revokeDevice: (id: string) => request<void>('POST', `/api/employees/${id}/revoke-device`),
   calls: (q: CallQuery) => request<Page<CallRow>>('GET', `/api/calls?${callQueryString(q)}`),
+  /** A 5-minute link to play the call's recording; each play is audited (M6). */
+  recording: (callId: number) => request<RecordingPlayResponse>('GET', `/api/calls/${callId}/recording`),
   reportSummary: (q: CallQuery) => request<ReportSummary>('GET', `/api/reports/summary?${callQueryString(q)}`),
 };

@@ -11,6 +11,7 @@ import com.reaplift.calls.sync.Outbox
 import com.reaplift.calls.sync.Outcome
 import com.reaplift.calls.sync.OutgoingCall
 import com.reaplift.calls.sync.PendingComment
+import com.reaplift.calls.sync.RecordingLedger
 
 /** A synced call with its after-call form (M4), for the screens. */
 data class LocalCall(
@@ -20,6 +21,8 @@ data class LocalCall(
     val note: String?,
     val followUpAtMs: Long?,
     val commentedAtMs: Long?,
+    /** M6: null until looked for; then uploaded, missing or not_expected. */
+    val recordingStatus: String? = null,
 )
 
 /**
@@ -28,7 +31,7 @@ data class LocalCall(
  * after-call forms (M4) with the company's outcomes. Nothing from a personal SIM is ever written here.
  */
 class LocalDb(context: Context) :
-    SQLiteOpenHelper(context, "calls.db", null, 2), Outbox, CallEnds, CommentStore {
+    SQLiteOpenHelper(context, "calls.db", null, 3), Outbox, CallEnds, CommentStore, RecordingLedger {
 
     override fun onCreate(db: SQLiteDatabase) {
         db.execSQL(
@@ -49,12 +52,34 @@ class LocalDb(context: Context) :
         db.execSQL("create index outbox_pending on outbox (sent_at, started_at)")
         db.execSQL("create table call_ends (ended_at integer not null)")
         addAfterCallForm(db)
+        addRecordings(db)
     }
 
     override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
-        // Version 2 (M4): the after-call form. Phones on version 1 keep their outbox.
+        // Version 2 (M4): the after-call form. Version 3 (M6): recordings. Older phones keep their outbox.
         if (oldVersion < 2) addAfterCallForm(db)
+        if (oldVersion < 3) addRecordings(db)
     }
+
+    private fun addRecordings(db: SQLiteDatabase) {
+        for (column in listOf("recording_status text", "recording_uri text", "recording_at integer")) {
+            db.execSQL("alter table outbox add column $column")
+        }
+    }
+
+    override fun callsNeedingRecording(sinceMs: Long, limit: Int): List<OutgoingCall> =
+        query("sent_at is not null and recording_status is null and started_at >= $sinceMs", "started_at asc", limit)
+
+    override fun markRecording(deviceCallId: String, status: String, uri: String?, at: Long) {
+        writableDatabase.execSQL(
+            "update outbox set recording_status = ?, recording_uri = ?, recording_at = ? where device_call_id = ?",
+            arrayOf(status, uri, at, deviceCallId),
+        )
+    }
+
+    override fun usedRecordingUris(): Set<String> =
+        readableDatabase.rawQuery("select recording_uri from outbox where recording_uri is not null", null)
+            .use { c -> buildSet { while (c.moveToNext()) add(c.getString(0)) } }
 
     private fun addAfterCallForm(db: SQLiteDatabase) {
         for (column in listOf(
@@ -129,9 +154,9 @@ class LocalDb(context: Context) :
         writableDatabase.execSQL("update outbox set comment_sent_at = ? where device_call_id = ?", arrayOf(at, deviceCallId))
     }
 
-    /** Placed or answered calls since `since` with no form yet, newest first (the home screen's "needs a comment"). */
+    /** Calls since `since` with no form yet, newest first (the home screen's "needs a comment"). */
     fun needsComment(since: Long): List<LocalCall> =
-        localCalls("commented_at is null and type in ('incoming', 'outgoing') and started_at >= $since", "started_at desc", 50)
+        localCalls("commented_at is null and started_at >= $since", "started_at desc", 50)
 
     /** Recent calls that have not had their "how did it go?" notification yet. Marks them, so each is asked once. */
     fun takeCallsToPrompt(pairedAtMs: Long, now: Long): List<OutgoingCall> {
@@ -163,7 +188,8 @@ class LocalDb(context: Context) :
     private fun localCalls(where: String, order: String, limit: Int): List<LocalCall> =
         readableDatabase.rawQuery(
             "select device_call_id, number, contact_name, type, started_at, talk_seconds, ring_seconds, ended_at, " +
-                "outcome_id, outcome_label, note, follow_up_at, commented_at from outbox where $where order by $order limit $limit",
+                "outcome_id, outcome_label, note, follow_up_at, commented_at, recording_status from outbox " +
+                "where $where order by $order limit $limit",
             null,
         ).use { c ->
             buildList {
@@ -185,6 +211,7 @@ class LocalDb(context: Context) :
                             note = c.getString(10),
                             followUpAtMs = if (c.isNull(11)) null else c.getLong(11),
                             commentedAtMs = if (c.isNull(12)) null else c.getLong(12),
+                            recordingStatus = c.getString(13),
                         ),
                     )
                 }

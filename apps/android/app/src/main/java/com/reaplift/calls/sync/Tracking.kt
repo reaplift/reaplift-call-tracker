@@ -52,6 +52,17 @@ object Tracking {
             val comments = CommentSync(db).send(api, System::currentTimeMillis)
             if (comments !is SendResult.Done) result = comments
         }
+        // Recordings (M6) after the calls and comments: they are the slowest to send.
+        if (result is SendResult.Done && MediaStoreAudio.hasPermission(context)) {
+            if (prefs.recordingsSince == 0L) prefs.recordingsSince = System.currentTimeMillis() - RecordingRules.FIRST_LOOKBACK_MS
+            val recordings = RecordingSync(db, MediaStoreAudio(context)).run(
+                AndroidRecordingUploader(api, context.contentResolver),
+                sinceMs = maxOf(prefs.recordingsSince, prefs.pairedAt - prefs.initialSyncDays * 86_400_000L),
+                now = System::currentTimeMillis,
+                onMissing = { call -> Notifications.recordingMissing(context, call, call.contactName ?: formatNumber(call.number)) },
+            )
+            if (recordings !is SendResult.Done) result = recordings
+        }
         if (result is SendResult.Done) {
             runCatching { api.config() }.onSuccess { config -> db.replaceOutcomes(config.outcomes.map { Outcome(it.id, it.label) }) }
         }

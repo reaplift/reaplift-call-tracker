@@ -1,6 +1,6 @@
 # M6. Call recordings
 
-- Status: Not started
+- Status: Built 11 November 2026 on the owner's instruction and run on the emulator (test-evidence.md). Live on Hostinger once the R2 keys are set (E6); real-phone dialer folders to confirm (E1, T4).
 - Owner: unassigned
 - Starts after: M4
 - External prerequisites: E1 (test phones), E2 (phone survey), E6 (object storage)

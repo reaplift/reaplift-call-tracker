@@ -3,9 +3,12 @@ import path from 'node:path';
 import fastifyStatic from '@fastify/static';
 import type { FastifyInstance } from 'fastify';
 
-/** The panel needs its own scripts and styles, and inline styles for the QR code; it still may not be framed. */
+/**
+ * The panel needs its own scripts and styles, and inline styles for the QR code; it still may not be framed.
+ * Recordings play from the storage's own address (R2) through short-lived links (M6), hence media-src https:.
+ */
 export const PANEL_CSP =
-  "default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; frame-ancestors 'none'";
+  "default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; media-src 'self' https:; frame-ancestors 'none'";
 
 export const isPanelPath = (url: string) => url === '/' || url.startsWith('/assets/');
 

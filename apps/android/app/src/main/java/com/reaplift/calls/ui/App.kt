@@ -57,6 +57,7 @@ import com.reaplift.calls.data.TrackingState
 import com.reaplift.calls.net.ApiClient
 import com.reaplift.calls.net.ApiException
 import com.reaplift.calls.net.PairRequest
+import com.reaplift.calls.sync.MediaStoreAudio
 import com.reaplift.calls.sync.Notifications
 import com.reaplift.calls.sync.Outcome
 import com.reaplift.calls.sync.SimInfo
@@ -154,6 +155,8 @@ private fun PermissionsStep(onDone: () -> Unit) {
         addAll(Tracking.REQUIRED_PERMISSIONS)
         add(Manifest.permission.READ_PHONE_NUMBERS)
         if (Build.VERSION.SDK_INT >= 33) add(Manifest.permission.POST_NOTIFICATIONS)
+        // M6: to find the dialer's recording of each company-SIM call. Asked here, but setup does not stop without it.
+        add(MediaStoreAudio.PERMISSION)
     }
     val launcher = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
         if (Tracking.hasPermissions(context)) onDone() else denied = true
@@ -164,6 +167,7 @@ private fun PermissionsStep(onDone: () -> Unit) {
             "Call logs: to read your company-SIM calls.",
             "Phone: to tell your company SIM from your personal SIM, and to measure ringing time.",
             "Notifications: to show that tracking is on, and to tell you if something stops it.",
+            "Music and audio: to find your dialer's recording of each company-SIM call. Other audio files are never opened or uploaded.",
         ),
     )
     Button(onClick = { launcher.launch(permissions.toTypedArray()) }, modifier = Modifier.fillMaxWidth()) { Text("Allow") }
@@ -382,6 +386,24 @@ private fun HomeScreen(prefs: Prefs, onChanged: () -> Unit, onComment: (String) 
     if (prefs.state == TrackingState.PERMISSION_MISSING) {
         Text("Call log or phone permission is off.", color = MaterialTheme.colorScheme.error)
     }
+    // M6: phones updated from 0.3.0 have not been asked yet; recordings are compulsory (owner).
+    var audioAllowed by remember { mutableStateOf(MediaStoreAudio.hasPermission(context)) }
+    val audioLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        audioAllowed = granted
+        if (granted) scope.launch { Tracking.syncNow(context); refresh++ }
+    }
+    if (!audioAllowed) {
+        Card(Modifier.fillMaxWidth()) {
+            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text("Allow call recordings", fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.error)
+                Text("Your company needs the recordings of your company-SIM calls. Allow \"Music and audio\" so the app can find your dialer's recordings. Other audio files are never opened.")
+                Button(onClick = { audioLauncher.launch(MediaStoreAudio.PERMISSION) }, modifier = Modifier.fillMaxWidth()) { Text("Allow") }
+                TextButton(onClick = {
+                    context.startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:${context.packageName}")))
+                }) { Text("Open app settings") }
+            }
+        }
+    }
     OutlinedButton(onClick = {
         scope.launch {
             Tracking.syncNow(context)
@@ -415,6 +437,10 @@ private fun HomeScreen(prefs: Prefs, onChanged: () -> Unit, onComment: (String) 
             Text("${formatTime(call.startedAtMs)} · ${call.type} · ${call.contactName ?: formatNumber(call.number)}")
             Text("Talk ${call.talkSeconds}s" + (call.ringSeconds?.let { " · rang ${it}s" } ?: ""), style = MaterialTheme.typography.bodySmall)
             item.outcomeLabel?.let { Text("Outcome: $it", style = MaterialTheme.typography.bodySmall) }
+            when (item.recordingStatus) {
+                "uploaded" -> Text("Recording sent", style = MaterialTheme.typography.bodySmall)
+                "missing" -> Text("Recording missing", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
+            }
             item.note?.let { Text("“$it”", style = MaterialTheme.typography.bodySmall) }
         }
         HorizontalDivider()

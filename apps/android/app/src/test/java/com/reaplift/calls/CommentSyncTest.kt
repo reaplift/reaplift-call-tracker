@@ -40,12 +40,12 @@ private fun call(id: String, type: String, startedAt: Long) = OutgoingCall(id, "
 
 class CommentSyncTest {
     @Test
-    fun asksOnlyAboutRecentPlacedOrAnsweredCallsSincePairing() {
+    fun asksAboutEveryRecentCallSincePairing() {
         val now = PAIRED + 3_600_000
         assertTrue(AfterCall.shouldPrompt(call("1", "outgoing", now - 60_000), PAIRED, now))
         assertTrue(AfterCall.shouldPrompt(call("2", "incoming", now - 60_000), PAIRED, now))
-        assertFalse("missed calls have nothing to report", AfterCall.shouldPrompt(call("3", "missed", now - 60_000), PAIRED, now))
-        assertFalse("rejected calls have nothing to report", AfterCall.shouldPrompt(call("4", "rejected", now - 60_000), PAIRED, now))
+        assertTrue("a missed call often needs 'called back'", AfterCall.shouldPrompt(call("3", "missed", now - 60_000), PAIRED, now))
+        assertTrue(AfterCall.shouldPrompt(call("4", "rejected", now - 60_000), PAIRED, now))
         assertFalse("calls from before pairing wait in the list", AfterCall.shouldPrompt(call("5", "outgoing", PAIRED - 60_000), PAIRED, now))
         val later = PAIRED + 10 * 3_600_000
         assertFalse("old calls do not pop up", AfterCall.shouldPrompt(call("6", "outgoing", PAIRED + 60_000), PAIRED, later))

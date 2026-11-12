@@ -27,6 +27,8 @@ const FilterQuery = z.object({
   numbers: list(z.string().min(1)),
   /** `no`: placed or answered calls still waiting for the after-call form (M4); `yes`: calls with one. */
   commented: z.enum(['yes', 'no']).optional(),
+  /** M6: `yes` calls with a recording, `missing` calls flagged as missing one. */
+  recording: z.enum(['yes', 'missing']).optional(),
 });
 
 export interface CallFilter {
@@ -40,6 +42,7 @@ export interface CallFilter {
   maxRing?: number;
   numbers: string[];
   commented?: 'yes' | 'no';
+  recording?: 'yes' | 'missing';
 }
 
 export class FilterError extends Error {
@@ -72,6 +75,7 @@ export function parseCallFilter(query: unknown, now: Date): CallFilter {
     maxRing: q.maxRing,
     numbers: q.numbers.map((n) => normalizeNumber(n).number).filter(Boolean),
     commented: q.commented,
+    recording: q.recording,
   };
 }
 
@@ -88,5 +92,9 @@ export function filterSql(f: CallFilter): RawBuilder<unknown> {
   if (f.commented === 'yes') parts.push(sql`c.commented_at is not null`);
   if (f.commented === 'no')
     parts.push(sql`c.commented_at is null and c.type in (${sql.join([...COMMENT_EXPECTED_TYPES])})`);
+  if (f.recording === 'yes')
+    parts.push(sql`exists (select 1 from recordings r where r.call_id = c.id and r.company_id = c.company_id and r.status = 'uploaded')`);
+  if (f.recording === 'missing')
+    parts.push(sql`exists (select 1 from recordings r where r.call_id = c.id and r.company_id = c.company_id and r.status = 'missing')`);
   return sql.join(parts, sql` and `);
 }

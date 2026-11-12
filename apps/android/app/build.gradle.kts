@@ -26,8 +26,8 @@ android {
         // Android 10 (decision D7).
         minSdk = 29
         targetSdk = 36
-        versionCode = 3
-        versionName = "0.3.0"
+        versionCode = 4
+        versionName = "0.4.0"
         // Debug builds can type a server (a laptop on the same Wi-Fi); release builds use this one.
         buildConfigField("String", "DEFAULT_SERVER_URL", "\"$serverUrl\"")
     }

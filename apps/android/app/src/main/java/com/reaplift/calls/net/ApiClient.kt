@@ -62,6 +62,21 @@ data class DeviceConfig(val settings: DeviceSettings, val outcomes: List<Outcome
 data class CommentJson(val outcomeId: String?, val note: String?, val followUpAt: String?)
 
 @Serializable
+data class RecordingUploadRequest(
+    val deviceCallId: String,
+    val sizeBytes: Long,
+    val mimeType: String,
+    val audioSeconds: Int?,
+    val matchScore: Int?,
+)
+
+@Serializable
+data class RecordingUploadResponse(val uploadUrl: String, val expiresAt: String, val headers: Map<String, String> = emptyMap())
+
+@Serializable
+data class RecordingCallRef(val deviceCallId: String)
+
+@Serializable
 data class CallJson(
     val deviceCallId: String,
     val number: String,
@@ -133,6 +148,17 @@ class ApiClient(
 
     override suspend fun upload(calls: List<OutgoingCall>): Set<String> =
         postCalls(calls).rejected.map { it.deviceCallId }.toSet()
+
+    suspend fun recordingUploadUrl(request: RecordingUploadRequest): RecordingUploadResponse =
+        call("POST", "/device/v1/recordings/upload-url", json.encodeToString(request)) { json.decodeFromString(it) }
+
+    suspend fun recordingComplete(deviceCallId: String) {
+        call("POST", "/device/v1/recordings/complete", json.encodeToString(RecordingCallRef(deviceCallId))) { }
+    }
+
+    suspend fun recordingMissing(deviceCallId: String) {
+        call("POST", "/device/v1/recordings/missing", json.encodeToString(RecordingCallRef(deviceCallId))) { }
+    }
 
     suspend fun config(): DeviceConfig = call("GET", "/device/v1/config", null) { json.decodeFromString(it) }
 

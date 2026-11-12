@@ -22,6 +22,8 @@ object Notifications {
     const val EXTRA_COMMENT_CALL = "comment_call_id"
     const val TRACKING_ID = 1
     private const val ALERT_ID = 2
+    /** One notification for missing recordings, replaced by the latest, so a dialer with recording off does not flood. */
+    private const val MISSING_ID = 3
 
     fun createChannels(context: Context) {
         val manager = context.getSystemService(NotificationManager::class.java)
@@ -64,6 +66,25 @@ object Notifications {
                 .setPriority(NotificationCompat.PRIORITY_HIGH)
                 .setCategory(NotificationCompat.CATEGORY_REMINDER)
                 .setContentIntent(open)
+                .setAutoCancel(true)
+                .build(),
+        )
+    }
+
+    /** HLD 8.6: a call of 5 seconds or more with no recording found within 10 minutes. */
+    fun recordingMissing(context: Context, call: OutgoingCall, who: String) {
+        if (android.os.Build.VERSION.SDK_INT >= 33 &&
+            context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+        ) return
+        val text = "No recording was found for your call with $who. Turn on automatic call recording in your Phone app's settings."
+        NotificationManagerCompat.from(context).notify(
+            MISSING_ID,
+            NotificationCompat.Builder(context, ALERTS_CHANNEL)
+                .setSmallIcon(R.drawable.ic_notification)
+                .setContentTitle("Call recording missing")
+                .setContentText(text)
+                .setStyle(NotificationCompat.BigTextStyle().bigText(text))
+                .setContentIntent(openApp(context))
                 .setAutoCancel(true)
                 .build(),
         )

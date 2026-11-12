@@ -70,6 +70,11 @@ class Prefs(context: Context) {
         get() = prefs.getBoolean("test_call_done", false)
         set(v) = prefs.edit { putBoolean("test_call_done", v) }
 
+    /** M6: recordings are looked for from this time on; set on the first run with recordings (3 days back). */
+    var recordingsSince: Long
+        get() = prefs.getLong("recordings_since", 0)
+        set(v) = prefs.edit { putLong("recordings_since", v) }
+
     var lastSyncAt: Long
         get() = prefs.getLong("last_sync_at", 0)
         set(v) = prefs.edit { putLong("last_sync_at", v) }
@@ -84,7 +89,7 @@ class Prefs(context: Context) {
     fun clearPairing() {
         prefs.edit {
             remove("device_token"); remove("paired_at"); remove("employee_name"); remove("company_number"); remove("company_name")
-            remove("last_call_log_id"); remove("test_call_done"); remove("last_sync_at")
+            remove("last_call_log_id"); remove("test_call_done"); remove("last_sync_at"); remove("recordings_since")
             putString("state", TrackingState.ON.name)
         }
     }

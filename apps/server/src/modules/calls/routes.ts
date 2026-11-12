@@ -29,6 +29,7 @@ interface Row {
   note: string | null;
   follow_up_at: Date | null;
   commented_at: Date | null;
+  recording: CallRow['recording'];
 }
 
 const toCallRow = (r: Row): CallRow => ({
@@ -47,6 +48,7 @@ const toCallRow = (r: Row): CallRow => ({
   note: r.note,
   followUpAt: r.follow_up_at?.toISOString() ?? null,
   commentedAt: r.commented_at?.toISOString() ?? null,
+  recording: r.recording,
 });
 
 /** Newest first. The cursor is the last row's start time and ID, so a page never repeats or skips a call. */
@@ -64,9 +66,10 @@ function decodeCursor(cursor: string | undefined): { startedAt: Date; id: number
 const SELECT = sql`
   select c.id, c.employee_id, e.name as employee_name, c.number, c.number_kind, c.contact_name, c.type,
          c.started_at, c.talk_seconds, c.ring_seconds, c.synced_at,
-         o.label as outcome, c.note, c.follow_up_at, c.commented_at
+         o.label as outcome, c.note, c.follow_up_at, c.commented_at, rec.status as recording
   from calls c join employees e on e.id = c.employee_id and e.company_id = c.company_id
   left join call_outcomes o on o.id = c.outcome_id and o.company_id = c.company_id
+  left join recordings rec on rec.call_id = c.id and rec.company_id = c.company_id
 `;
 
 export function registerCallRoutes(app: FastifyInstance, deps: { db: Kysely<Database>; now: () => Date }) {
@@ -115,7 +118,7 @@ export function registerCallRoutes(app: FastifyInstance, deps: { db: Kysely<Data
     ).rows;
     let body = csvLine([
       'Date and time (IST)', 'Employee', 'Number', 'Contact', 'Type', 'Talk (s)', 'Ring (s)', 'Synced (IST)',
-      'Outcome', 'Comment', 'Follow-up (IST)',
+      'Outcome', 'Comment', 'Follow-up (IST)', 'Recording',
     ]);
     for (const r of rows) {
       body += csvLine([
@@ -130,6 +133,7 @@ export function registerCallRoutes(app: FastifyInstance, deps: { db: Kysely<Data
         r.outcome,
         r.note,
         r.follow_up_at ? formatIst(r.follow_up_at) : '',
+        r.recording === 'uploaded' ? 'yes' : r.recording === 'missing' ? 'missing' : '',
       ]);
     }
     return reply

@@ -10,6 +10,8 @@ import { registerDeviceRoutes } from './modules/device/routes.js';
 import { registerEmployeeRoutes } from './modules/employees/routes.js';
 import { registerInstallRoutes } from './modules/install/routes.js';
 import { registerOutcomeRoutes } from './modules/outcomes/routes.js';
+import { registerRecordingRoutes } from './modules/recordings/routes.js';
+import type { RecordingStore } from './lib/storage.js';
 import { registerReportsRoutes } from './modules/reports/routes.js';
 import { isPanelPath, PANEL_CSP, registerPanel } from './modules/panel/routes.js';
 
@@ -39,6 +41,8 @@ export interface AppDeps {
   deviceSettings?: DeviceSettings;
   /** The built panel to serve from `/`; unset locally, where Vite serves it. */
   panelDir?: string;
+  /** Where call recordings are stored (M6); null switches recordings off. */
+  recordingStore?: RecordingStore | null;
 }
 
 export const DEFAULT_DEVICE_SETTINGS: DeviceSettings = { initialSyncDays: 7, syncIntervalMinutes: 15 };
@@ -57,6 +61,7 @@ export function buildApp({
   pairingCodeHours = 24,
   deviceSettings = DEFAULT_DEVICE_SETTINGS,
   panelDir,
+  recordingStore = null,
 }: AppDeps) {
   const app = Fastify({ logger, trustProxy: true });
   app.decorate('routeList', []);
@@ -98,6 +103,7 @@ export function buildApp({
   registerCallRoutes(app, { db, now });
   registerReportsRoutes(app, { db, now });
   registerOutcomeRoutes(app, { db });
+  registerRecordingRoutes(app, { db, now, store: recordingStore });
   registerInstallRoutes(app, { db, now, publicBaseUrl, apkDir });
   if (panelDir) app.register((instance) => registerPanel(instance, panelDir));
 

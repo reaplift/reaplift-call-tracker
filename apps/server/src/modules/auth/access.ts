@@ -50,7 +50,7 @@ export function classifyRoute(url: string): RouteKind {
   if (SESSION_ROUTES.includes(url)) return 'session';
   if (SUPER_ADMIN_ROUTES.includes(url)) return 'super_admin';
   if (url.startsWith('/device/v1/')) return 'device';
-  if (url === '/api/calls' || url === '/api/calls/export.csv' || url.startsWith('/api/reports/')) return 'manager';
+  if (url === '/api/calls' || url.startsWith('/api/calls/') || url.startsWith('/api/reports/')) return 'manager';
   if (url.startsWith('/api/')) return 'admin';
   return 'unscoped';
 }

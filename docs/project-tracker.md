@@ -66,7 +66,7 @@ Update your row in the same commit that changes a task's status.
 | [M3](milestones/m3-daily-email/spec.md) Daily email report | Every morning admins and managers get yesterday's report by email | Not started | unassigned | M2 | E5 (email sender) |
 | [M4](milestones/m4-phone-health-and-updates/spec.md) Phone health and updates | The panel shows which phones are healthy, silent or misconfigured; the app updates itself; the employee fills an after-call form | Task 4.5 (after-call form) built 11 November 2026, ahead of the rest on the owner's instruction, and run on the Android 15 emulator ([test-evidence.md](milestones/m4-phone-health-and-updates/test-evidence.md)); app 0.3.0 published for the Country Roads beta. Tasks 4.1 to 4.4 and 4.6 not started | unassigned | M1 | E1 |
 | [M5](milestones/m5-crm-integration/spec.md) CRM integration | The CRM shows call history and reports for its employees through our API, and receives a webhook per call | Not started | unassigned | M2 | E3 (CRM code and access) |
-| [M6](milestones/m6-call-recordings/spec.md) Call recordings | A company-SIM call's recording is uploaded and played in the panel; a missing recording is flagged and the employee is told | Not started | unassigned | M4 | E1, E2 (phone survey), E6 (storage) |
+| [M6](milestones/m6-call-recordings/spec.md) Call recordings | A company-SIM call's recording is uploaded and played in the panel; a missing recording is flagged and the employee is told | Built 11 November 2026 on the owner's instruction (ahead of M4) and run end to end on the Android 15 emulator with S3-compatible local storage ([test-evidence.md](milestones/m6-call-recordings/test-evidence.md)); app 0.4.0 published. Live recording on Hostinger waits on the R2 keys (E6); real-phone dialer folders to confirm in the Country Roads beta (E1, T4) | unassigned | M4 | E1, E2 (phone survey), E6 (storage) |
 | [M7](milestones/m7-deploy/spec.md) Deploy | A push to `main` deploys to `callit.reaplift.com` (Hostinger shared hosting, Node.js web app) with HTTPS, a health check, rollback and tested backups | Not started | unassigned | M0, P1 | E4 (domain done; MariaDB database), E6 |
 | [M8](milestones/m8-pilot/spec.md) Pilot | Five employees, then everyone, use it for two weeks with no gaps a manager notices | Not started | ReapLift | M3, M5, M6, M7 | E1 to E7 (E7: legal sign-off) |
 | [M9](milestones/m9-call-from-app/spec.md) Call from the app | The employee taps a number in the app (a CRM lead or a typed number); the phone's dialer calls it on the company SIM; the "call is recorded" line shows first; the after-call form opens after | Not started | unassigned | M4, M5 | E1 |
@@ -110,7 +110,7 @@ Each has a default, so work does not stop; the default is built unless the owner
 | D1 | Leads: earlier "skip lead management", later "build all Callyzer features". In or out? | Out | nothing in M0 to M8 |
 | D2 | Recordings to upload: all company-SIM calls, or only calls with numbers in the CRM? | All company-SIM calls | M6 |
 | D3 | How many days of past calls to sync when a phone is paired | 7 days | M1 task 1.5 |
-| D4 | Retention: how long recordings and call rows are kept | Recordings 12 months; call rows indefinitely | M6, M7 |
+| D4 | Retention: how long recordings and call rows are kept | **Decided (owner, 11 November 2026): recordings 12 months**, deleted by an R2 lifecycle rule (365 days after upload); call rows indefinitely, pending legal (Q12) | M6, M7 |
 | D5 | Our own admin panel as well as the CRM pages? | Yes: our panel for admins and managers from M1; the CRM gets the same data through the API in M5 | M1 |
 | D6 | Object storage: Cloudflare R2 or AWS S3 Mumbai | **Decided: Cloudflare R2** on ReapLift's existing account (owner, 11 November 2026) | M6, M7 |
 | D7 | Lowest Android version supported | Android 10 | M0, M1 |
@@ -132,6 +132,8 @@ Each has a default, so work does not stop; the default is built unless the owner
 - **Legal sign-off (owner):** the owner handles legal sign-off with ReapLift's lawyers before the end-to-end demo; the P1.8 sign-off feature in the product is deferred. E7 still applies.
 - **Order of work (owner):** after P1, M4's after-call form (task 4.5) comes first, then call recordings (M6), ahead of the rest of M4 and M2. The dependency rule is set aside for these on the owner's instruction; the client beta installs new APKs by hand until M4's self-update exists.
 - **Client beta (owner):** Country Roads (CRM company 1) tests on `https://callit.reaplift.com` from 11 November 2026 with a test admin login; their first round on app 0.2.0 worked.
+- **Recordings (owner):** built today, with Cloudflare R2. The phone finds the dialer's file through Android's media index (`READ_MEDIA_AUDIO`), not all-files access (HLD 8.7 said `MANAGE_EXTERNAL_STORAGE`); all-files access stays the fallback if a brand's dialer saves where the media index does not see. Audio goes phone → R2 with a signed link and never through the server; the database keeps only the key and details. R2 lifecycle: Infrequent Access after 30 days, deleted after 365 days (D4). The CRM's request for a Callyzer-style API (M5) starts with a compatibility check against Callyzer API v2.3, then a translation layer over our API.
+- **Comments on every call type (client):** missed and rejected calls get the after-call form too.
 - **Migrations exception:** because nothing is deployed and there is no real data, P1 replaces migrations 0001 to 0003 with MariaDB versions instead of adding new files. The rule "never edit a merged migration" applies again from P1 onwards.
 - **The CRM, found on the server:** a Laravel app at `public_html/crm` (served as `crm.reaplift.com`), sharing the database `u436365342_reapLiftCrm` with superadmin, HRMS, bookings and kstewdbooking. Each CRM user has one `company_id`, which is the user ID of the person who registered the company. The CRM's own cleanup (hardcoded passwords, employee documents in git history) is tracked in the CRM repo's PR #1, not here.
 
@@ -202,4 +204,5 @@ Claim a number before writing the file.
 | 0002 | `0002_employees_devices_calls.sql` | M1 | Committed (PostgreSQL); rewritten for MariaDB in P1, with `company_id` |
 | 0003 | `0003_reports_m2.sql` | M2 | Committed (PostgreSQL); rewritten for MariaDB in P1, with `company_id` |
 | 0004 | `0004_after_call_form.sql` | M4 task 4.5 | Committed; applied on Hostinger 11 November 2026 |
-| 0005 | next free | | Free |
+| 0005 | `0005_recordings.sql` | M6 | Committed; applied on Hostinger 11 November 2026 |
+| 0006 | next free | | Free |

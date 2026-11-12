@@ -1,5 +1,6 @@
 import { buildApp } from '../app.js';
-import type { Config } from '../config.js';
+import { s3Settings, type Config } from '../config.js';
+import { s3Store } from '../lib/storage.js';
 import { createDb, createPool, pingDb } from '../lib/db.js';
 import type { Logger } from '../lib/logger.js';
 
@@ -24,6 +25,10 @@ export async function runApi(config: Config, log: Logger) {
     pairingCodeHours: config.PAIRING_CODE_HOURS,
     deviceSettings: { initialSyncDays: config.INITIAL_SYNC_DAYS, syncIntervalMinutes: 15 },
     panelDir: config.PANEL_DIR,
+    recordingStore: (() => {
+      const s = s3Settings(config);
+      return s ? s3Store(s) : null;
+    })(),
   });
 
   const shutdown = async () => {
@@ -37,5 +42,5 @@ export async function runApi(config: Config, log: Logger) {
 
   // 0.0.0.0, so a phone on the same Wi-Fi can reach a developer's laptop.
   await app.listen({ host: '0.0.0.0', port: config.PORT });
-  log.info({ port: config.PORT, version: config.APP_VERSION }, 'api listening');
+  log.info({ port: config.PORT, version: config.APP_VERSION, recordings: s3Settings(config) ? 'on' : 'off' }, 'api listening');
 }

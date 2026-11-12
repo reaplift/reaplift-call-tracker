@@ -115,9 +115,9 @@ describe('the after-call form', () => {
     expect(csv).toContain('Interested,"Wants a 2BHK quote, call after 6 pm","13/11/2026, 18:00:00"');
   });
 
-  it('lists placed or answered calls still waiting for a comment; missed calls are not asked about', async () => {
+  it('lists every call still waiting for a comment, missed calls included', async () => {
     const waiting = (await admin('GET', `/api/calls?${RANGE}&commented=no`)).json().items.map((c: { number: string }) => c.number);
-    expect(waiting).toEqual(['919900022222']);
+    expect(waiting).toEqual(['919900033333', '919900022222']);
     const done = (await admin('GET', `/api/calls?${RANGE}&commented=yes`)).json().items.map((c: { number: string }) => c.number);
     expect(done).toEqual(['919900011111']);
   });

@@ -35,6 +35,7 @@ Used by `/api/calls`, `/api/reports/*`, the CSV export and `/v1/*`.
 | `minTalk`, `maxTalk` | seconds | Optional, inclusive |
 | `minRing`, `maxRing` | seconds | Optional, inclusive |
 | `numbers` | string[] | Outside numbers, normalised before matching |
+| `recording` | `yes`, `missing` | Calls with an uploaded recording, or flagged as missing one (M6) |
 | `commented` | `yes`, `no` | `no`: placed or answered calls still waiting for the after-call form; `yes`: calls with one (M4) |
 | `includeExcluded` | boolean | Default false (M2) |
 | `hasRecording` | `yes`, `no`, `missing`, `pending` | M6 |
@@ -143,8 +144,8 @@ An employee has at most one active device; pairing a new phone revokes the old o
 
 | Table | Columns | Milestone |
 | --- | --- | --- |
-| `recordings` | `id`, `call_id unique`, `status` (`pending_upload`, `uploaded`, `missing`, `not_expected`), `object_key`, `size_bytes`, `audio_seconds`, `mime_type`, `match_score`, `matched_at`, `uploaded_at`, `deleted_at` | M6 |
-| `recording_plays` | `id bigint`, `recording_id`, `user_id`, `at` (also in `audit_logs`) | M6 |
+| `recordings` | `id`, `company_id`, `call_id unique` (composite foreign key to the company's call), `status` (`pending_upload`, `uploaded`, `missing`), `object_key` (R2 key `c<company>/<yyyy>/<mm>/<call id>-<random>.<ext>`), `size_bytes`, `audio_seconds`, `mime_type`, `match_score` (0 to 100), `reported_at`, `uploaded_at`, `deleted_at`. Audio is never in the database. Built 11 November 2026 (migration 0005) | M6 |
+| (plays) | Each play is an `audit_logs` row `recording.played`; no separate table | M6 |
 
 ### Call from the app (M9)
 
@@ -181,7 +182,7 @@ An employee has at most one active device; pairing a new phone revokes the old o
 | GET | `/api/devices` (health list) | admin, manager | M4 |
 | POST | `/api/app-releases` | admin | M4 |
 | GET, POST, DELETE | `/api/integrations/api-keys`, `/api/integrations/webhooks` | admin | M5 |
-| GET | `/api/calls/:id/recording` (returns a 5-minute play link) | admin, manager | M6 |
+| GET | `/api/calls/:id/recording` (returns a 5-minute play link; 410 `RECORDING_EXPIRED` after 365 days, D4). Built 11 November 2026 | admin, manager | M6 |
 
 ### Phone app (`/device/v1`, `Authorization: Bearer <device token>`)
 
@@ -194,9 +195,9 @@ An employee has at most one active device; pairing a new phone revokes the old o
 | PATCH | `/device/v1/calls/:deviceCallId/comment` | After-call form `{ outcomeId, note, followUpAt }` (any may be null, but not both outcome and note). 404 `CALL_NOT_SYNCED` until the call has arrived; the phone keeps the comment and retries. Built 11 November 2026 | M4 |
 | POST | `/device/v1/call-requests` | Record that the app is about to place a call | M9 |
 | GET | `/device/v1/leads` | The employee's CRM leads to call | M9 |
-| POST | `/device/v1/recordings/upload-url` | `{ deviceCallId, sizeBytes, mimeType, audioSeconds, matchScore }` → `{ uploadUrl, expiresAt }` | M6 |
-| POST | `/device/v1/recordings/complete` | Confirms the upload; server checks the object exists | M6 |
-| POST | `/device/v1/recordings/missing` | Marks a call's recording missing | M6 |
+| POST | `/device/v1/recordings/upload-url` | `{ deviceCallId, sizeBytes, mimeType, audioSeconds, matchScore }` → `{ uploadUrl, expiresAt, headers }`; a 15-minute signed PUT link straight to R2. 503 `RECORDINGS_NOT_CONFIGURED` until R2 is set; 409 `RECORDING_EXISTS` | M6 (built) |
+| POST | `/device/v1/recordings/complete` | Confirms the upload; the server checks the object's size in R2 (400 `UPLOAD_NOT_FOUND` if absent) | M6 (built) |
+| POST | `/device/v1/recordings/missing` | Marks a call's recording missing; never overwrites an upload | M6 (built) |
 
 A revoked device gets 401 `DEVICE_REVOKED` and the app stops syncing and shows "This phone was unpaired".
 
@@ -228,6 +229,11 @@ The same reports and history as the panel, in Callyzer's shape so the CRM gets e
 | `COMPANY_SUSPENDED` | 403 | The company is suspended; its devices stop syncing and its users cannot log in (P1) |
 | `COMPANY_AGREEMENT_MISSING` | 409 or 403 | No current company agreement: pairing code refused (409), device sync refused (403) (P1.8) |
 | `EMPLOYEE_POLICY_MISSING` | 409 | Pairing code asked for an employee without a recorded signed policy (P1.8) |
+| `RECORDINGS_NOT_CONFIGURED` | 503 | Storage settings not set on the server; the phone keeps the recording and retries (M6) |
+| `RECORDING_EXISTS` | 409 | The call already has its recording (M6) |
+| `UPLOAD_NOT_FOUND` | 400 | "Complete" before the file arrived in storage (M6) |
+| `NO_RECORDING` | 404 | The call has no uploaded recording (M6) |
+| `RECORDING_EXPIRED` | 410 | Older than 365 days; R2's lifecycle rule has deleted it (D4) |
 | `CALL_NOT_SYNCED` | 404 | After-call form for a call the server does not have yet (M4) |
 | `OUTCOME_UNKNOWN` | 400 | Outcome switched off or from another company (M4) |
 | `OUTCOME_EXISTS` | 409 | An outcome with that label already exists in the company (M4) |
