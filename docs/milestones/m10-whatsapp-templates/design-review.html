@@ -97,6 +97,36 @@ th { font-size: 11.5px; text-transform: uppercase; letter-spacing: .06em; color:
 .compare { overflow-x: auto; }
 footer { color: var(--muted); font-size: 13px; border-top: 1px solid var(--line); padding-top: 14px; }
 
+
+/* panel tabs */
+.nav button { font: inherit; font-size: 13px; padding: 5px 11px; border-radius: 6px; color: var(--muted); background: none; border: 1px solid transparent; cursor: pointer; }
+.nav button:hover, .nav button:focus-visible { border-color: var(--brand); outline: none; }
+.nav button[aria-selected="true"] { background: var(--brand-soft); color: var(--brand); font-weight: 600; }
+.badge { font-size: 10.5px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; padding: 1px 6px; border-radius: 4px; vertical-align: middle; margin-left: 6px; }
+.badge.built { background: var(--chip); color: var(--muted); }
+.badge.new { background: var(--brand-soft); color: var(--brand); }
+.view-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; }
+.view-head h3 { font-size: 18px; }
+.filters { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; margin-bottom: 14px; }
+.filters .input { padding: 6px 9px; font-size: 13px; }
+.tablewrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 8px; }
+.tablewrap table td, .tablewrap table th { white-space: nowrap; }
+.tablewrap td.wrap { white-space: normal; min-width: 180px; }
+.t-in { color: var(--in); font-weight: 600; } .t-out { color: var(--out); font-weight: 600; } .t-bad { color: var(--bad); font-weight: 600; }
+.play { color: var(--brand); font-weight: 600; }
+.wa-mark { font-size: 11.5px; color: var(--wa); background: var(--wa-soft); border-radius: 999px; padding: 1px 7px; font-weight: 600; }
+.cards2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 14px; }
+.card { border: 1px solid var(--line); border-radius: 10px; padding: 14px; display: grid; gap: 8px; align-content: start; min-width: 0; }
+.card h4 { margin: 0; font-size: 15px; }
+.card .m { color: var(--muted); font-size: 13px; margin: 0; }
+.list { display: grid; gap: 0; }
+.list div { display: flex; justify-content: space-between; gap: 8px; padding: 6px 0; border-bottom: 1px solid var(--line); font-size: 14px; }
+.list div:last-child { border-bottom: none; }
+.list span:last-child { color: var(--muted); font-size: 13px; text-align: right; }
+.formrow { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; align-items: end; margin-bottom: 14px; }
+.ok { color: var(--in); } .warn { color: var(--out); }
+.legend { font-size: 13px; color: var(--muted); display: flex; gap: 14px; flex-wrap: wrap; align-items: center; }
+
 @media (max-width: 900px) { .dash, .tpl { grid-template-columns: minmax(0, 1fr); } }
 @media (max-width: 480px) { .q { grid-template-columns: minmax(0, 1fr); gap: 2px; } header h1 { font-size: 26px; } }
 </style>
@@ -109,11 +139,21 @@ footer { color: var(--muted); font-size: 13px; border-top: 1px solid var(--line)
   </header>
 
   <section aria-labelledby="d">
-    <h2 id="d">1. Dashboard: the first page after login</h2>
-    <p class="intent">Three cards (Today, Yesterday, Last week) with the same 13 numbers Callyzer shows. Click any number to see the calls behind it. Managers see only their teams. The numbers come from the same code as the CRM API, so the panel and the CRM always agree.</p>
+    <h2 id="d">1. The panel, with the new Dashboard first</h2>
+    <p class="intent">Click the tabs to see every page. The Dashboard has three cards (Today, Yesterday, Last week) with the same 13 numbers Callyzer shows; click any number to see the calls behind it. Managers see only their teams. The numbers come from the same code as the CRM API, so the panel and the CRM always agree.</p>
+    <div class="legend"><span><span class="badge built">Built</span> already in the panel today</span><span><span class="badge new">New</span> proposed, built after approval</span></div>
     <div class="frame">
-      <p class="cap">Panel · Dashboard (sample numbers)</p>
-      <div class="nav"><span class="on">Dashboard</span><span>Call history</span><span>Employees</span><span>Teams</span><span>Settings</span></div>
+      <p class="cap">Panel · sample data</p>
+      <div class="nav" role="tablist" aria-label="Panel pages">
+        <button role="tab" aria-selected="true" aria-controls="v-dash" id="t-dash">Dashboard</button>
+        <button role="tab" aria-selected="false" aria-controls="v-calls" id="t-calls">Call history</button>
+        <button role="tab" aria-selected="false" aria-controls="v-reports" id="t-reports">Reports</button>
+        <button role="tab" aria-selected="false" aria-controls="v-emp" id="t-emp">Employees</button>
+        <button role="tab" aria-selected="false" aria-controls="v-teams" id="t-teams">Teams</button>
+        <button role="tab" aria-selected="false" aria-controls="v-set" id="t-set">Settings</button>
+      </div>
+      <div role="tabpanel" id="v-dash" aria-labelledby="t-dash">
+      <div class="view-head"><h3>Dashboard <span class="badge new">New</span></h3><span class="m" style="color:var(--muted);font-size:13px">Country Roads · all teams</span></div>
       <div class="dash">
         <div class="period">
           <h3>Today <small>12 Nov 2026</small></h3>
@@ -168,6 +208,108 @@ footer { color: var(--muted); font-size: 13px; border-top: 1px solid var(--line)
             <a class="tile" href="#d"><b>5h 22m 59s</b><span>Working hours</span></a>
             <a class="tile" href="#d"><b>122</b><span>Connected calls</span></a>
           </div>
+        </div>
+      </div>
+
+      </div>
+
+      <div role="tabpanel" id="v-calls" aria-labelledby="t-calls" hidden>
+        <div class="view-head"><h3>Call history <span class="badge built">Built</span></h3><span class="btn ghost">Download CSV</span></div>
+        <div class="filters">
+          <label class="field">From<div class="input">12 Nov 2026</div></label>
+          <label class="field">To<div class="input">12 Nov 2026</div></label>
+          <label class="field">Employee<div class="input">Everyone</div></label>
+          <label class="field">Type<div class="input">All</div></label>
+          <label class="field">Talk at least (s)<div class="input">&nbsp;</div></label>
+          <label class="field">Ring at least (s)<div class="input">&nbsp;</div></label>
+          <label class="field">Number<div class="input">&nbsp;</div></label>
+          <label class="field">Comment<div class="input">All calls</div></label>
+          <label class="field">Recording<div class="input">All calls</div></label>
+          <label class="field">WhatsApp <span class="badge new">New</span><div class="input">All calls</div></label>
+        </div>
+        <div class="tablewrap"><table>
+          <thead><tr><th>Date and time</th><th>Employee</th><th>Number</th><th>Type</th><th>Talk</th><th>Ring</th><th>Outcome and comment</th><th>Recording</th><th>WhatsApp <span class="badge new">New</span></th></tr></thead>
+          <tbody>
+            <tr><td>12 Nov, 2:00 pm</td><td>Meena Iyer</td><td>99000 44444</td><td class="t-out">Outgoing</td><td>0s</td><td>30s</td><td class="wrap"><span class="warn">Waiting for a comment</span></td><td>—</td><td>—</td></tr>
+            <tr><td>12 Nov, 1:00 pm</td><td>Meena Iyer</td><td>99000 33333</td><td class="t-bad">Missed</td><td>0s</td><td>15s</td><td class="wrap"><b>Call back later</b> · Was driving, call after 6</td><td>—</td><td>—</td></tr>
+            <tr><td>12 Nov, 12:00 pm</td><td>Ravi Kumar</td><td>99000 22222</td><td class="t-in">Incoming</td><td>1m 0s</td><td>5s</td><td class="wrap"><b>Interested</b> · Wants price list</td><td><span class="play">▶ Play</span></td><td><span class="wa-mark">Welcome</span></td></tr>
+            <tr><td>12 Nov, 11:00 am</td><td>Meena Iyer</td><td>Asha Builders<br><span style="color:var(--muted);font-size:12px">99000 11111</span></td><td class="t-out">Outgoing</td><td>3m 5s</td><td>8s</td><td class="wrap"><b>Interested</b> · Site visit planned · follow up 13 Nov</td><td><span class="play">▶ Play</span></td><td><span class="wa-mark">Follow-up</span></td></tr>
+          </tbody>
+        </table></div>
+      </div>
+
+      <div role="tabpanel" id="v-reports" aria-labelledby="t-reports" hidden>
+        <div class="view-head"><h3>Reports <span class="badge built">Summary built</span><span class="badge new">Other tabs new</span></h3></div>
+        <div class="row" style="margin-bottom:12px"><span class="mini sel">Summary</span><span class="mini">Employees</span><span class="mini">Analysis</span><span class="mini">Never attended</span><span class="mini">Not picked up</span><span class="mini">Unique clients</span><span class="mini">Hourly</span><span class="mini">Day-wise</span></div>
+        <div class="filters">
+          <label class="field">From<div class="input">02 Nov 2026</div></label>
+          <label class="field">To<div class="input">08 Nov 2026</div></label>
+          <label class="field">Team <span class="badge new">New</span><div class="input">All teams</div></label>
+          <label class="field">Employee<div class="input">Everyone</div></label>
+          <label class="field">Excluded numbers<div class="input">Left out</div></label>
+        </div>
+        <div class="tablewrap"><table>
+          <thead><tr><th>Employee</th><th>Calls</th><th>Connected</th><th>Talk</th><th>Never attended</th><th>Not picked up</th><th>Working hours</th></tr></thead>
+          <tbody>
+            <tr><td>Meena Iyer</td><td>96</td><td>71</td><td>1h 18m</td><td>3</td><td>5</td><td>21h 40m</td></tr>
+            <tr><td>Ravi Kumar</td><td>82</td><td>51</td><td>1h 8m</td><td>2</td><td>3</td><td>19h 12m</td></tr>
+          </tbody>
+        </table></div>
+        <p class="m" style="color:var(--muted);font-size:13px">Every number opens the calls behind it. CSV and PDF download per tab.</p>
+      </div>
+
+      <div role="tabpanel" id="v-emp" aria-labelledby="t-emp" hidden>
+        <div class="view-head"><h3>Employees <span class="badge built">Built</span></h3></div>
+        <div class="formrow">
+          <label class="field">Name<div class="input">&nbsp;</div></label>
+          <label class="field">Employee code<div class="input">&nbsp;</div></label>
+          <label class="field">Company SIM number<div class="input">&nbsp;</div></label>
+          <span class="btn">Add employee</span>
+        </div>
+        <div class="tablewrap"><table>
+          <thead><tr><th>Name</th><th>Company SIM</th><th>Team <span class="badge new">New</span></th><th>Phone</th><th>App</th><th>Last sync</th><th></th></tr></thead>
+          <tbody>
+            <tr><td>Meena Iyer <span style="color:var(--muted)">CR-7</span></td><td>98765 00000</td><td>North</td><td>vivo I2221 · Android 16</td><td>0.5.0</td><td class="ok">2 min ago</td><td><span class="btn ghost">Unpair</span></td></tr>
+            <tr><td>Ravi Kumar <span style="color:var(--muted)">CR-9</span></td><td>98123 45678</td><td>North</td><td>TECNO LH8n · Android 14</td><td>0.3.0 <span class="warn">update</span></td><td class="warn">3 h ago</td><td><span class="btn ghost">Unpair</span></td></tr>
+            <tr><td>Arjun Rao</td><td>98765 11111</td><td>South</td><td style="color:var(--muted)">Not paired</td><td>—</td><td>—</td><td><span class="btn ghost">Pairing code</span></td></tr>
+          </tbody>
+        </table></div>
+      </div>
+
+      <div role="tabpanel" id="v-teams" aria-labelledby="t-teams" hidden>
+        <div class="view-head"><h3>Teams <span class="badge new">New page</span></h3><span class="btn">Add team</span></div>
+        <p class="m" style="color:var(--muted);font-size:13px;margin:0 0 12px">Managers see only the calls and reports of their own teams. The server side is built; this page is new.</p>
+        <div class="cards2">
+          <div class="card">
+            <h4>North</h4>
+            <p class="m">Managers: Vikram Rao</p>
+            <div class="list"><div><span>Meena Iyer</span><span>98765 00000</span></div><div><span>Ravi Kumar</span><span>98123 45678</span></div></div>
+            <div class="row"><span class="btn ghost">Add employee</span><span class="btn ghost">Add manager</span><span class="btn ghost">Delete team</span></div>
+          </div>
+          <div class="card">
+            <h4>South</h4>
+            <p class="m">Managers: Deepa Nair</p>
+            <div class="list"><div><span>Arjun Rao</span><span>98765 11111</span></div></div>
+            <div class="row"><span class="btn ghost">Add employee</span><span class="btn ghost">Add manager</span><span class="btn ghost">Delete team</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div role="tabpanel" id="v-set" aria-labelledby="t-set" hidden>
+        <div class="view-head"><h3>Settings</h3></div>
+        <div class="cards2">
+          <div class="card"><h4>Call outcomes <span class="badge built">Built</span></h4><p class="m">What the employee picks after a call.</p>
+            <div class="list"><div><span>Interested</span><span>On</span></div><div><span>Call back later</span><span>On</span></div><div><span>Not interested</span><span>On</span></div><div><span>Wrong number</span><span>On</span></div></div></div>
+          <div class="card"><h4>Ready-made notes <span class="badge built">Built</span></h4><p class="m">Inserted by typing "/" in the after-call note.</p>
+            <div class="list"><div><span>Site visit planned</span><span>On</span></div><div><span>Asked to call back later</span><span>On</span></div><div><span>Not reachable</span><span>On</span></div></div></div>
+          <div class="card"><h4>WhatsApp message templates <span class="badge new">New</span></h4><p class="m">Fixed messages the employee sends after a call. Editor shown in part 2 below.</p>
+            <div class="list"><div><span>Welcome</span><span>On</span></div><div><span>Follow-up</span><span>On</span></div><div><span>Not interested (keep in touch)</span><span>Off</span></div></div></div>
+          <div class="card"><h4>Excluded numbers <span class="badge new">New page</span></h4><p class="m">Office lines and colleagues, left out of reports.</p>
+            <div class="list"><div><span>040 4000 1000</span><span>Office</span></div></div><div class="row"><span class="btn ghost">Add number</span></div></div>
+          <div class="card"><h4>Users <span class="badge new">New page</span></h4><p class="m">Admins and managers who log in to this panel.</p>
+            <div class="list"><div><span>admin@countryroads.in</span><span>Admin</span></div><div><span>vikram@countryroads.in</span><span>Manager</span></div></div><div class="row"><span class="btn ghost">Add user</span></div></div>
+          <div class="card"><h4>API keys for your CRM <span class="badge built">Built</span></h4><p class="m">Your CRM reads calls from callit.reaplift.com/api/v2.3/.</p>
+            <div class="list"><div><span>Our CRM · rlk_NB4x…</span><span>Used 2 min ago</span></div></div><div class="row"><span class="btn ghost">Create key</span></div></div>
         </div>
       </div>
     </div>
@@ -304,3 +446,18 @@ footer { color: var(--muted); font-size: 13px; border-top: 1px solid var(--line)
 
   <footer>Callit by ReapLift · Design review, not built yet. Images, PDFs and reading WhatsApp replies are not part of this design.</footer>
 </div>
+
+<script>
+(function () {
+  var tabs = document.querySelectorAll('[role="tab"]');
+  tabs.forEach(function (tab) {
+    tab.addEventListener('click', function () {
+      tabs.forEach(function (t) {
+        var on = t === tab;
+        t.setAttribute('aria-selected', on ? 'true' : 'false');
+        document.getElementById(t.getAttribute('aria-controls')).hidden = !on;
+      });
+    });
+  });
+})();
+</script>
