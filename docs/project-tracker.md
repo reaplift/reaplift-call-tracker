@@ -134,6 +134,7 @@ Each has a default, so work does not stop; the default is built unless the owner
 - **Client beta (owner):** Country Roads (CRM company 1) tests on `https://callit.reaplift.com` from 11 November 2026 with a test admin login; their first round on app 0.2.0 worked.
 - **Recordings (owner):** built today, with Cloudflare R2. The phone finds the dialer's file through Android's media index (`READ_MEDIA_AUDIO`), not all-files access (HLD 8.7 said `MANAGE_EXTERNAL_STORAGE`); all-files access stays the fallback if a brand's dialer saves where the media index does not see. Audio goes phone → R2 with a signed link and never through the server; the database keeps only the key and details. R2 lifecycle: Infrequent Access after 30 days, deleted after 365 days (D4). The CRM's request for a Callyzer-style API (M5) starts with a compatibility check against Callyzer API v2.3, then a translation layer over our API.
 - **Comments on every call type (client):** missed and rejected calls get the after-call form too.
+- **After-call pop-up and call history (client, 12 November 2026):** the pop-up opens by itself over other apps when a company-SIM call ends (needs "Display over other apps"; without it the notification stays), with outcome, ready-made notes ("/" or chips, managed per company in the panel's Settings), voice typing, follow-up date, Save & exit and Save & call again (opens the dialer; calling directly is M9). "Save & Add Lead" waits for the CRM link. The app opens on a call history screen like the client's reference app. Built in app 0.5.0.
 - **Migrations exception:** because nothing is deployed and there is no real data, P1 replaces migrations 0001 to 0003 with MariaDB versions instead of adding new files. The rule "never edit a merged migration" applies again from P1 onwards.
 - **The CRM, found on the server:** a Laravel app at `public_html/crm` (served as `crm.reaplift.com`), sharing the database `u436365342_reapLiftCrm` with superadmin, HRMS, bookings and kstewdbooking. Each CRM user has one `company_id`, which is the user ID of the person who registered the company. The CRM's own cleanup (hardcoded passwords, employee documents in git history) is tracked in the CRM repo's PR #1, not here.
 
@@ -205,4 +206,5 @@ Claim a number before writing the file.
 | 0003 | `0003_reports_m2.sql` | M2 | Committed (PostgreSQL); rewritten for MariaDB in P1, with `company_id` |
 | 0004 | `0004_after_call_form.sql` | M4 task 4.5 | Committed; applied on Hostinger 11 November 2026 |
 | 0005 | `0005_recordings.sql` | M6 | Committed; applied on Hostinger 11 November 2026 |
-| 0006 | next free | | Free |
+| 0006 | `0006_note_templates.sql` | After-call pop-up | Committed; applied on Hostinger 12 November 2026 |
+| 0007 | next free | | Free |

@@ -27,6 +27,8 @@ class TrackingService : Service() {
     private var stopListening: (() -> Unit)? = null
     private var lastState = TelephonyManager.CALL_STATE_IDLE
     private val handler = Handler(Looper.getMainLooper())
+    /** When the current call started ringing or dialling, for the after-call pop-up. */
+    private var callStartedAt = 0L
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -52,8 +54,15 @@ class TrackingService : Service() {
     }
 
     private fun onCallState(state: Int) {
+        if (state != TelephonyManager.CALL_STATE_IDLE && lastState == TelephonyManager.CALL_STATE_IDLE) {
+            callStartedAt = System.currentTimeMillis()
+        }
         if (state == TelephonyManager.CALL_STATE_IDLE && lastState != TelephonyManager.CALL_STATE_IDLE) {
             LocalDb(this).record(System.currentTimeMillis())
+            // The pop-up decides for itself whether this was a company-SIM call; it shows nothing otherwise.
+            if (PopupPermission.granted(this) && callStartedAt > 0) {
+                runCatching { com.reaplift.calls.ui.AfterCallActivity.start(this, callStartedAt - 5_000) }
+            }
             // Recordings (M6): the dialer saves its file a few seconds after the call; look again then, and once more
             // after RecordingRules.GIVE_UP_MS so a call with no recording is flagged without waiting for the 15-minute sync.
             handler.postDelayed({ SyncWorker.syncSoon(this, delaySeconds = 0) }, RecordingRules.SETTLE_MS + 10_000)

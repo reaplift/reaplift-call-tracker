@@ -107,7 +107,12 @@ export function registerDeviceRoutes(
         select id, label from call_outcomes where company_id = ${req.device!.companyId} and active = 1 order by sort_order, label
       `.execute(db)
     ).rows;
-    const body: DeviceConfig = { settings, outcomes };
+    const noteTemplates = (
+      await sql<{ text: string }>`
+        select text from note_templates where company_id = ${req.device!.companyId} and active = 1 order by sort_order, text
+      `.execute(db)
+    ).rows.map((r) => r.text);
+    const body: DeviceConfig = { settings, outcomes, noteTemplates };
     return reply.code(200).send(body);
   });
 

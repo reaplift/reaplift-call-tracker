@@ -56,7 +56,11 @@ data class OutcomeJson(val id: String, val label: String)
 
 /** `/device/v1/config` (M4 adds the company's outcomes for the after-call form). */
 @Serializable
-data class DeviceConfig(val settings: DeviceSettings, val outcomes: List<OutcomeJson> = emptyList())
+data class DeviceConfig(
+    val settings: DeviceSettings,
+    val outcomes: List<OutcomeJson> = emptyList(),
+    val noteTemplates: List<String> = emptyList(),
+)
 
 @Serializable
 data class CommentJson(val outcomeId: String?, val note: String?, val followUpAt: String?)

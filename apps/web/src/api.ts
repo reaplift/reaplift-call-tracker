@@ -1,4 +1,4 @@
-import type { CallRow, Employee, Page, PairingCodeResponse, RecordingPlayResponse } from '@reaplift/calls-shared';
+import type { CallOutcome, CallRow, Employee, NoteTemplate, Page, PairingCodeResponse, RecordingPlayResponse } from '@reaplift/calls-shared';
 
 export interface User {
   id: string;
@@ -81,5 +81,12 @@ export const api = {
   calls: (q: CallQuery) => request<Page<CallRow>>('GET', `/api/calls?${callQueryString(q)}`),
   /** A 5-minute link to play the call's recording; each play is audited (M6). */
   recording: (callId: number) => request<RecordingPlayResponse>('GET', `/api/calls/${callId}/recording`),
+  outcomes: () => request<{ items: CallOutcome[] }>('GET', '/api/call-outcomes'),
+  addOutcome: (label: string) => request<CallOutcome>('POST', '/api/call-outcomes', { label }),
+  updateOutcome: (id: string, body: Partial<{ label: string; active: boolean }>) => request<CallOutcome>('PATCH', `/api/call-outcomes/${id}`, body),
+  noteTemplates: () => request<{ items: NoteTemplate[] }>('GET', '/api/note-templates'),
+  addNoteTemplate: (text: string) => request<NoteTemplate>('POST', '/api/note-templates', { text }),
+  updateNoteTemplate: (id: string, body: Partial<{ text: string; active: boolean }>) =>
+    request<NoteTemplate>('PATCH', `/api/note-templates/${id}`, body),
   reportSummary: (q: CallQuery) => request<ReportSummary>('GET', `/api/reports/summary?${callQueryString(q)}`),
 };

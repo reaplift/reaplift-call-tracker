@@ -4,8 +4,9 @@ import { CallHistory } from './pages/CallHistory';
 import { Employees } from './pages/Employees';
 import { Login } from './pages/Login';
 import { Reports } from './pages/Reports';
+import { Settings } from './pages/Settings';
 
-type PageId = 'calls' | 'reports' | 'employees';
+type PageId = 'calls' | 'reports' | 'employees' | 'settings';
 
 export function App() {
   const [user, setUser] = useState<User | null | undefined>(undefined);
@@ -31,6 +32,11 @@ export function App() {
         <button className={page === 'employees' ? 'active' : ''} onClick={() => setPage('employees')}>
           Employees
         </button>
+        {user.role !== 'manager' && (
+          <button className={page === 'settings' ? 'active' : ''} onClick={() => setPage('settings')}>
+            Settings
+          </button>
+        )}
         <span className="spacer" />
         <span className="muted">{user.name}</span>
         <button className="secondary" onClick={() => api.logout().finally(() => setUser(null))}>
@@ -41,6 +47,7 @@ export function App() {
         {page === 'calls' && <CallHistory />}
         {page === 'reports' && <Reports />}
         {page === 'employees' && <Employees />}
+        {page === 'settings' && <Settings />}
       </main>
     </div>
   );

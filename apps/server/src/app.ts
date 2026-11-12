@@ -10,6 +10,7 @@ import { registerDeviceRoutes } from './modules/device/routes.js';
 import { registerEmployeeRoutes } from './modules/employees/routes.js';
 import { registerInstallRoutes } from './modules/install/routes.js';
 import { registerOutcomeRoutes } from './modules/outcomes/routes.js';
+import { registerNoteTemplateRoutes } from './modules/outcomes/templates.js';
 import { registerRecordingRoutes } from './modules/recordings/routes.js';
 import type { RecordingStore } from './lib/storage.js';
 import { registerReportsRoutes } from './modules/reports/routes.js';
@@ -103,6 +104,7 @@ export function buildApp({
   registerCallRoutes(app, { db, now });
   registerReportsRoutes(app, { db, now });
   registerOutcomeRoutes(app, { db });
+  registerNoteTemplateRoutes(app, { db });
   registerRecordingRoutes(app, { db, now, store: recordingStore });
   registerInstallRoutes(app, { db, now, publicBaseUrl, apkDir });
   if (panelDir) app.register((instance) => registerPanel(instance, panelDir));

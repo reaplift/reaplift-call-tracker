@@ -31,7 +31,7 @@ data class LocalCall(
  * after-call forms (M4) with the company's outcomes. Nothing from a personal SIM is ever written here.
  */
 class LocalDb(context: Context) :
-    SQLiteOpenHelper(context, "calls.db", null, 3), Outbox, CallEnds, CommentStore, RecordingLedger {
+    SQLiteOpenHelper(context, "calls.db", null, 4), Outbox, CallEnds, CommentStore, RecordingLedger {
 
     override fun onCreate(db: SQLiteDatabase) {
         db.execSQL(
@@ -53,13 +53,66 @@ class LocalDb(context: Context) :
         db.execSQL("create table call_ends (ended_at integer not null)")
         addAfterCallForm(db)
         addRecordings(db)
+        addNoteTemplates(db)
     }
 
     override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
         // Version 2 (M4): the after-call form. Version 3 (M6): recordings. Older phones keep their outbox.
         if (oldVersion < 2) addAfterCallForm(db)
         if (oldVersion < 3) addRecordings(db)
+        if (oldVersion < 4) addNoteTemplates(db)
     }
+
+    /** Version 4: the company's ready-made notes for the after-call pop-up. */
+    private fun addNoteTemplates(db: SQLiteDatabase) {
+        db.execSQL("create table note_templates (text text not null, sort integer not null)")
+    }
+
+    fun noteTemplates(): List<String> =
+        readableDatabase.rawQuery("select text from note_templates order by sort", null)
+            .use { c -> buildList { while (c.moveToNext()) add(c.getString(0)) } }
+
+    fun replaceNoteTemplates(texts: List<String>) {
+        writableDatabase.transaction {
+            execSQL("delete from note_templates")
+            texts.forEachIndexed { i, t -> execSQL("insert into note_templates (text, sort) values (?, ?)", arrayOf(t, i)) }
+        }
+    }
+
+    /**
+     * The app's call history screen: company-SIM calls on this phone (sent or still waiting), newest first.
+     * `type` is null for all; `search` matches the number or the saved contact name.
+     */
+    fun history(type: String?, search: String, limit: Int = 200): List<LocalCall> {
+        val where = buildList {
+            add("1 = 1")
+            // The "Missed" tab shows rejected calls too, as the client's reference app does.
+            if (type == "missed") add("type in ('missed', 'rejected')")
+            else if (type != null) add("type = '${type.filter(Char::isLetter)}'")
+            val q = search.trim().replace("'", "").replace("%", "")
+            if (q.isNotEmpty()) {
+                val digits = q.filter(Char::isDigit)
+                add(
+                    "(lower(coalesce(contact_name, '')) like '%${q.lowercase()}%'" +
+                        (if (digits.length >= 3) " or number like '%$digits%'" else "") + ")",
+                )
+            }
+        }.joinToString(" and ")
+        return localCalls(where, "started_at desc", limit)
+    }
+
+    /** The newest company-SIM call that started at or after `sinceMs`: the one the pop-up is about. */
+    fun latestCallSince(sinceMs: Long): LocalCall? = localCalls("started_at >= $sinceMs", "started_at desc", 1).firstOrNull()
+
+    /** The pop-up showed this call, so no "How did the call go?" notification is needed for it. */
+    fun markPrompted(deviceCallId: String, at: Long) {
+        writableDatabase.execSQL("update outbox set prompted_at = coalesce(prompted_at, ?) where device_call_id = ?", arrayOf(at, deviceCallId))
+    }
+
+    /** Where the phone's own recording of this call is, for playing it on the phone. */
+    fun recordingUri(deviceCallId: String): String? =
+        readableDatabase.rawQuery("select recording_uri from outbox where device_call_id = ?", arrayOf(deviceCallId))
+            .use { if (it.moveToFirst()) it.getString(0) else null }
 
     private fun addRecordings(db: SQLiteDatabase) {
         for (column in listOf("recording_status text", "recording_uri text", "recording_at integer")) {
@@ -124,7 +177,7 @@ class LocalDb(context: Context) :
             .use { it.moveToFirst() }
 
     fun clear() {
-        writableDatabase.transaction { execSQL("delete from outbox"); execSQL("delete from call_ends"); execSQL("delete from outcomes") }
+        writableDatabase.transaction { execSQL("delete from outbox"); execSQL("delete from call_ends"); execSQL("delete from outcomes"); execSQL("delete from note_templates") }
     }
 
     /** The employee's after-call form, kept here until the next sync sends it. */

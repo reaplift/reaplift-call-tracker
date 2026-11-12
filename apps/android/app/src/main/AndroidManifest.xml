@@ -13,6 +13,8 @@
     <!-- M6: find the dialer's recording of a company-SIM call through the media index (Android 13+, then older). -->
     <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" />
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
+    <!-- The after-call pop-up opens by itself over other apps (client, 12 November 2026); optional, else a notification. -->
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
 
     <application
         android:name=".CallsApp"
@@ -38,6 +40,16 @@
                 <data android:scheme="reaplift-calls" android:host="pair" />
             </intent-filter>
         </activity>
+
+        <!-- The after-call pop-up: opened by the tracking service over other apps when a company-SIM call ends. -->
+        <activity
+            android:name=".ui.AfterCallActivity"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:launchMode="singleTop"
+            android:taskAffinity="com.reaplift.calls.aftercall"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar"
+            android:windowSoftInputMode="adjustResize" />
 
         <!-- specialUse: Android 15 limits dataSync services to 6 hours a day; tracking runs all day (HLD 8.4). -->
         <service

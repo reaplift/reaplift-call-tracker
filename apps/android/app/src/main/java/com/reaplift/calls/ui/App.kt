@@ -58,6 +58,7 @@ import com.reaplift.calls.net.ApiClient
 import com.reaplift.calls.net.ApiException
 import com.reaplift.calls.net.PairRequest
 import com.reaplift.calls.sync.MediaStoreAudio
+import com.reaplift.calls.sync.PopupPermission
 import com.reaplift.calls.sync.Notifications
 import com.reaplift.calls.sync.Outcome
 import com.reaplift.calls.sync.SimInfo
@@ -113,10 +114,29 @@ fun App(pairLink: PairLink?, commentCall: String? = null, onCommentClosed: () ->
             Step.TEST_CALL -> TestCallStep(prefs, next)
             Step.HOME -> {
                 val id = commenting
-                if (id != null) {
-                    CommentScreen(id, onDone = { commenting = null; onCommentClosed(); next() })
+                val item = remember(id, version) { id?.let { LocalDb(context).find(it) } }
+                if (id != null && item != null) {
+                    Title("How did the call go?")
+                    CommentForm(item, onDone = { commenting = null; onCommentClosed(); next() })
                 } else {
-                    HomeScreen(prefs, onChanged = next, onComment = { commenting = it })
+                    // The client's reference app opens on call history; setup and problems are under Status.
+                    var tab by remember { mutableStateOf("history") }
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        androidx.compose.material3.FilterChip(selected = tab == "history", onClick = { tab = "history" }, label = { Text("Call history") })
+                        androidx.compose.material3.FilterChip(
+                            selected = tab == "status",
+                            onClick = { tab = "status" },
+                            label = { Text(if (needsAttention(context, prefs)) "Status ⚠" else "Status") },
+                        )
+                    }
+                    if (tab == "history") {
+                        if (prefs.state != TrackingState.ON) {
+                            Text("Tracking is paused. Open Status to fix it.", color = MaterialTheme.colorScheme.error)
+                        }
+                        CallHistoryScreen(refresh = version, onComment = { commenting = it })
+                    } else {
+                        HomeScreen(prefs, onChanged = next, onComment = { commenting = it })
+                    }
                 }
             }
         }
@@ -386,6 +406,18 @@ private fun HomeScreen(prefs: Prefs, onChanged: () -> Unit, onComment: (String) 
     if (prefs.state == TrackingState.PERMISSION_MISSING) {
         Text("Call log or phone permission is off.", color = MaterialTheme.colorScheme.error)
     }
+    // The after-call pop-up (client): needs "Display over other apps"; without it a notification is shown instead.
+    var popupAllowed by remember { mutableStateOf(PopupPermission.granted(context)) }
+    LaunchedEffect(refresh) { popupAllowed = PopupPermission.granted(context) }
+    if (!popupAllowed) {
+        Card(Modifier.fillMaxWidth()) {
+            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text("Show the pop-up after each call", fontWeight = FontWeight.SemiBold)
+                Text("Allow \"Display over other apps\" so the call details and notes open by themselves when a work call ends.")
+                Button(onClick = { context.startActivity(PopupPermission.settingsIntent(context)) }, modifier = Modifier.fillMaxWidth()) { Text("Allow") }
+            }
+        }
+    }
     // M6: phones updated from 0.3.0 have not been asked yet; recordings are compulsory (owner).
     var audioAllowed by remember { mutableStateOf(MediaStoreAudio.hasPermission(context)) }
     val audioLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
@@ -448,107 +480,9 @@ private fun HomeScreen(prefs: Prefs, onChanged: () -> Unit, onComment: (String) 
     Text("Version ${BuildConfig.VERSION_NAME}", style = MaterialTheme.typography.bodySmall)
 }
 
-/** The after-call form (M4): outcome, comment and follow-up for one company-SIM call. Saved on the phone, sent on the next sync. */
-@Composable
-private fun CommentScreen(deviceCallId: String, onDone: () -> Unit) {
-    val context = LocalContext.current
-    val scope = rememberCoroutineScope()
-    val db = remember { LocalDb(context) }
-    val item: LocalCall? = remember(deviceCallId) { db.find(deviceCallId) }
-    var outcomes by remember { mutableStateOf(db.outcomes()) }
-    var outcomeId by remember { mutableStateOf(item?.outcomeId) }
-    var note by remember { mutableStateOf(item?.note.orEmpty()) }
-    val followUps = remember { followUpChoices() }
-    var followUp by remember { mutableStateOf(item?.followUpAtMs) }
-
-    if (item == null) {
-        Title("Call not found")
-        Text("This call is no longer on the phone.")
-        Button(onClick = onDone, modifier = Modifier.fillMaxWidth()) { Text("Back") }
-        return
-    }
-    // A phone that has never synced since this update has no outcomes yet: fetch them once.
-    LaunchedEffect(Unit) {
-        if (outcomes.isEmpty()) {
-            Tracking.syncNow(context)
-            outcomes = db.outcomes()
-        }
-    }
-
-    val call = item.call
-    Title("How did the call go?")
-    Text("${formatDay(call.startedAtMs)} ${formatTime(call.startedAtMs)} · ${call.type} · ${call.contactName ?: formatNumber(call.number)}")
-    Text("Talk ${call.talkSeconds}s", style = MaterialTheme.typography.bodySmall)
-
-    Text("Outcome", fontWeight = FontWeight.SemiBold)
-    if (outcomes.isEmpty()) Text("Loading the choices… you can still write a comment.", style = MaterialTheme.typography.bodySmall)
-    // The whole row is the tap target: people tap the words, not the small circle.
-    outcomes.forEach { o ->
-        val selected = outcomeId == o.id
-        Row(
-            Modifier.fillMaxWidth().selectable(selected = selected, role = Role.RadioButton, onClick = { outcomeId = if (selected) null else o.id }),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            RadioButton(selected = selected, onClick = null)
-            Text(o.label)
-        }
-    }
-
-    OutlinedTextField(
-        value = note,
-        onValueChange = { if (it.length <= 1000) note = it },
-        label = { Text("Comment (optional)") },
-        modifier = Modifier.fillMaxWidth(),
-        minLines = 3,
-    )
-
-    Text("Follow up", fontWeight = FontWeight.SemiBold)
-    followUps.forEach { (label, at) ->
-        Row(
-            Modifier.fillMaxWidth().selectable(selected = followUp == at, role = Role.RadioButton, onClick = { followUp = at }),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            RadioButton(selected = followUp == at, onClick = null)
-            Text(label)
-        }
-    }
-
-    val canSave = outcomeId != null || note.isNotBlank()
-    Button(
-        enabled = canSave,
-        onClick = {
-            val outcome: Outcome? = outcomes.firstOrNull { it.id == outcomeId }
-            db.saveComment(call.deviceCallId, outcome, note.trim().ifBlank { null }, followUp, System.currentTimeMillis())
-            Notifications.cancelComment(context, call.deviceCallId)
-            scope.launch { Tracking.syncNow(context) }
-            onDone()
-        },
-        modifier = Modifier.fillMaxWidth(),
-    ) { Text("Save") }
-    TextButton(onClick = onDone, modifier = Modifier.fillMaxWidth()) { Text("Later") }
-}
-
-/** "None", tomorrow, in 3 days and next week, each at 10:00 on the phone's clock. */
-private fun followUpChoices(): List<Pair<String, Long?>> {
-    fun daysAhead(days: Int): Long {
-        val cal = java.util.Calendar.getInstance()
-        cal.add(java.util.Calendar.DAY_OF_YEAR, days)
-        cal.set(java.util.Calendar.HOUR_OF_DAY, 10)
-        cal.set(java.util.Calendar.MINUTE, 0)
-        cal.set(java.util.Calendar.SECOND, 0)
-        cal.set(java.util.Calendar.MILLISECOND, 0)
-        return cal.timeInMillis
-    }
-    val day = SimpleDateFormat("EEE d MMM", Locale.getDefault())
-    return listOf(
-        "No follow-up" to null,
-        "Tomorrow (${day.format(Date(daysAhead(1)))}, 10:00)" to daysAhead(1),
-        "In 3 days (${day.format(Date(daysAhead(3)))}, 10:00)" to daysAhead(3),
-        "Next week (${day.format(Date(daysAhead(7)))}, 10:00)" to daysAhead(7),
-    )
-}
-
-private fun formatDay(ms: Long) = SimpleDateFormat("d MMM", Locale.getDefault()).format(Date(ms))
+/** Something on the Status tab needs the employee: tracking paused, recordings or the pop-up not allowed. */
+private fun needsAttention(context: Context, prefs: Prefs) =
+    prefs.state != TrackingState.ON || !MediaStoreAudio.hasPermission(context) || !PopupPermission.granted(context)
 
 private fun startOfToday(): Long {
     val cal = java.util.Calendar.getInstance()

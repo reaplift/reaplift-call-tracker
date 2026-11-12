@@ -129,6 +129,7 @@ An employee has at most one active device; pairing a new phone revokes the old o
 | --- | --- | --- |
 | `device_checkins` | `id bigint`, `device_id`, `at`, `battery_pct`, `battery_optimised bool`, `permissions jsonb`, `sim_present bool`, `pending_calls int`, `default_dialer`, `app_version` | M4 |
 | `call_outcomes` | `id`, `company_id`, `label` (unique per company), `sort_order`, `active`, `created_at`. Every company starts with Interested, Call back later, Not interested, No answer / busy, Wrong number, Other (migration 0004; new companies get them when created) | M4 (built 11 November 2026) |
+| `note_templates` | `id`, `company_id`, `text` (unique per company), `sort_order`, `active`, `created_at`. Six defaults per company (migration 0006); in `/device/v1/config` as `noteTemplates` | After-call pop-up (built 12 November 2026) |
 | `calls` (new columns) | `outcome_id null` (composite foreign key to the company's outcomes), `follow_up_at null`, `commented_at null`; the comment is `calls.note` | M4 (built 11 November 2026) |
 | `app_releases` | `id`, `version_code unique`, `version_name`, `sha256`, `file_key`, `min_supported_code`, `notes`, `published_at` | M4 |
 
@@ -169,6 +170,7 @@ An employee has at most one active device; pairing a new phone revokes the old o
 | POST | `/api/auth/login`, `/api/auth/logout` | anyone, logged in | M1 |
 | GET | `/api/auth/me` | logged in | M1 |
 | GET, POST | `/api/call-outcomes`; PATCH `/api/call-outcomes/:id` (label, sortOrder, active) | admin | M4 (built 11 November 2026) |
+| GET, POST | `/api/note-templates`; PATCH `/api/note-templates/:id` (text, sortOrder, active); panel Settings page | admin | After-call pop-up (built 12 November 2026) |
 | GET, POST | `/api/companies` | super admin | P1 |
 | PATCH | `/api/companies/:id` | super admin | P1 |
 | GET, POST | `/api/employees` | admin (managers read their teams' from M2) | M1 |

@@ -95,6 +95,28 @@ describe('outcomes', () => {
   });
 });
 
+describe('ready-made notes', () => {
+  const templatesFor = async (t: string) => (await phone(t)('GET', '/device/v1/config')).json().noteTemplates as string[];
+
+  it('every company starts with six, and the phone gets the active ones in order', async () => {
+    expect(await templatesFor(token)).toEqual([
+      'Not reachable', 'Asked to call back later', 'Interested, sending details on WhatsApp', 'Site visit planned', 'Not interested', 'Wrong number',
+    ]);
+  });
+
+  it("an admin edits only their company's notes", async () => {
+    expect((await admin('POST', '/api/note-templates', { text: 'Price shared on WhatsApp', sortOrder: 0 })).statusCode).toBe(201);
+    expect((await admin('POST', '/api/note-templates', { text: 'Price shared on WhatsApp' })).statusCode).toBe(409);
+    const notReachable = (await admin('GET', '/api/note-templates')).json().items.find((t: { text: string }) => t.text === 'Not reachable');
+    expect((await admin('PATCH', `/api/note-templates/${notReachable.id}`, { active: false })).json().active).toBe(false);
+    const mine = await templatesFor(token);
+    expect(mine[0]).toBe('Price shared on WhatsApp');
+    expect(mine).not.toContain('Not reachable');
+    expect(await templatesFor(otherToken)).toContain('Not reachable');
+    expect((await otherAdmin('PATCH', `/api/note-templates/${notReachable.id}`, { text: 'Hijack' })).statusCode).toBe(404);
+  });
+});
+
 describe('the after-call form', () => {
   it('saves the outcome, comment and follow-up, and shows them in call history and the CSV', async () => {
     const interested = (await outcomesFor(token)).find((o) => o.label === 'Interested')!;

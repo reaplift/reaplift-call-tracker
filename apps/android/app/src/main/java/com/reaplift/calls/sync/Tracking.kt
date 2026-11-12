@@ -40,8 +40,12 @@ object Tracking {
         val since = prefs.pairedAt - prefs.initialSyncDays * 86_400_000L
         prefs.lastCallLogId = sync.collect(prefs.lastCallLogId, since, matcher)
 
-        // After-call form (M4): ask about each new placed or answered call once, straight away, even offline.
-        for (call in db.takeCallsToPrompt(prefs.pairedAt, System.currentTimeMillis())) {
+        // After-call form (M4): ask about each new call once, straight away, even offline. When the pop-up can show
+        // over other apps it handles calls that just ended, so they get no notification as well.
+        val now = System.currentTimeMillis()
+        val popup = PopupPermission.granted(context)
+        for (call in db.takeCallsToPrompt(prefs.pairedAt, now)) {
+            if (popup && now - call.startedAtMs < POPUP_HANDLES_MS) continue
             Notifications.askForComment(context, call, call.contactName ?: formatNumber(call.number))
         }
 
@@ -64,7 +68,10 @@ object Tracking {
             if (recordings !is SendResult.Done) result = recordings
         }
         if (result is SendResult.Done) {
-            runCatching { api.config() }.onSuccess { config -> db.replaceOutcomes(config.outcomes.map { Outcome(it.id, it.label) }) }
+            runCatching { api.config() }.onSuccess { config ->
+                db.replaceOutcomes(config.outcomes.map { Outcome(it.id, it.label) })
+                db.replaceNoteTemplates(config.noteTemplates)
+            }
         }
         when (result) {
             is SendResult.Done -> prefs.lastSyncAt = System.currentTimeMillis()
@@ -73,6 +80,19 @@ object Tracking {
         }
         return result
     }
+
+    /** Reads new company-SIM calls from the call log into the outbox, without sending: the pop-up needs the call now. */
+    suspend fun collectNow(context: Context) = lock.withLock {
+        val prefs = Prefs(context)
+        if (!prefs.isPaired || prefs.state == TrackingState.REVOKED || !hasPermissions(context)) return@withLock
+        val matcher = Sims(context).matcherFor(prefs.companySubId) ?: return@withLock
+        val db = LocalDb(context)
+        val since = prefs.pairedAt - prefs.initialSyncDays * 86_400_000L
+        prefs.lastCallLogId = CallSync(AndroidCallLog(context), db, db).collect(prefs.lastCallLogId, since, matcher)
+    }
+
+    /** Calls this recent are the pop-up's; older ones (it was closed, or the phone was off) get the notification. */
+    private const val POPUP_HANDLES_MS = 5 * 60_000L
 
     private fun setState(context: Context, prefs: Prefs, state: TrackingState) {
         if (prefs.state == state) return
