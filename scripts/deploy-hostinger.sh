@@ -29,14 +29,17 @@ SSH=(ssh -i "$KEY" -p "$PORT" -o BatchMode=yes "$HOST")
 remote() { "${SSH[@]}" "$@"; }
 
 check_health() {
-  local body="" host ip resolve=()
+  # With a version, wait until that release answers: the old process can serve for a few seconds after the switch.
+  local want="${1:-}" body="" host ip resolve=()
   # A Mac that looked the name up before the DNS record existed may still have "not found" cached.
   host="${URL#https://}"; host="${host%%/*}"
   ip="$(dig +short "$host" 2>/dev/null | grep -E '^[0-9.]+$' | head -1 || true)"
   [ -n "$ip" ] && resolve=(--resolve "$host:443:$ip")
   for _ in $(seq 1 20); do
     body=$(curl -fsS "${resolve[@]}" "$URL/healthz" 2>/dev/null || true)
-    if echo "$body" | grep -q '"db":"ok"'; then echo "healthy: $body"; return 0; fi
+    if echo "$body" | grep -q '"db":"ok"' && { [ -z "$want" ] || echo "$body" | grep -q "\"version\":\"$want\""; }; then
+      echo "healthy: $body"; return 0
+    fi
     sleep 3
   done
   echo "NOT healthy: ${body:-no answer}"; return 1
@@ -108,7 +111,7 @@ SetEnv LSNODE_CONSOLE_LOG $APP/logs/console.log
 HTACCESS"
 
   echo "== check $URL"
-  check_health
+  check_health "$id"
 }
 
 case "${1:-deploy}" in
