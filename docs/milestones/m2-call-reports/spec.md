@@ -71,6 +71,7 @@ Out: the daily email (M3), device health columns (M4), recording coverage (M6), 
 | 2.4 | Reports page and drill-down | 2.3 | 2.5 |
 | 2.5 | CSV and PDF export | 2.3 | 2.4 |
 | 2.6 | Hand-count fixture test | 2.3 | 2.4, 2.5 |
+| 2.7 | Dashboard: Today, Yesterday, Last week (client, 12 November 2026; design waiting for approval) | 2.3 (can start from M5's report functions) | 2.4, 2.5 |
 
 ### 2.1 Teams, managers, excluded numbers, role scope
 
@@ -96,6 +97,26 @@ Out: the daily email (M3), device health columns (M4), recording coverage (M6), 
 ### 2.6 Hand-count fixture test
 
 - The worked example's calls as a fixture; every report's output asserted exactly.
+
+### 2.7 Dashboard (design, waiting for approval)
+
+Asked by the client on 12 November 2026, with a screenshot of Callyzer's dashboard. It is the panel's first page after login.
+
+- **Layout:** three cards side by side (stacked on a phone): **Today**, **Yesterday** and **Last week**. Last week is the previous Monday to Sunday ("02 to 08 Nov 2026"), as Callyzer shows it. Days are India time.
+- **Tiles in each card:**
+  - left column: Total calls, Incoming, Outgoing, Missed, Never attended, Unique clients, Connected calls;
+  - right column: Call duration, Incoming duration, Outgoing duration, Rejected, Not picked up by client, Working hours.
+  - Durations read "1h 27m 27s".
+  - Colours: incoming green, outgoing orange, missed, rejected, never attended and not picked up red.
+- **Same numbers everywhere:** the tiles use the same report functions as the CRM API's `call-log/summary` (built 12 November 2026), moved into one shared reports module. So the dashboard, the API and the later reports page can't disagree. HLD section 6 defines each tile.
+- **Who sees what:** managers see their own teams only; the super admin sees the company picked. Excluded numbers are left out.
+- **Drill-down:** clicking a tile opens call history with the matching filter (for example, Yesterday's missed calls). Never attended, not picked up and working hours open the matching report once 2.4 exists; until then, call history.
+- **Route:** `GET /api/reports/dashboard` returns the three periods in one answer.
+- **Tests:** the worked example's Monday as "Yesterday"; a manager's numbers count only their teams; the dashboard equals `call-log/summary` for the same days.
+- **Open questions:**
+  - D1. Does "Last week" mean the previous Monday to Sunday, or the last 7 days? [Monday to Sunday, as Callyzer.]
+  - D2. Should a fourth card show "This month"? [No.]
+  - D3. Should the dashboard replace Call history as the first page after login? [Yes.]
 
 ## Data and API
 

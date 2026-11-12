@@ -15,6 +15,7 @@ Each milestone is one flow and has its own folder with a `spec.md`. Status, orde
 | M7 | [Deploy](m7-deploy/spec.md) |
 | M8 | [Pilot](m8-pilot/spec.md) |
 | M9 | [Call from the app](m9-call-from-app/spec.md) |
+| M10 | [WhatsApp message templates](m10-whatsapp-templates/spec.md) (design waiting for approval) |
 
 ## What every spec contains, in this order
 
