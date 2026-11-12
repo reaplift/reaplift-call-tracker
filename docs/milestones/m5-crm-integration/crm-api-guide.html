@@ -1,0 +1,424 @@
+<title>Callit CRM API</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: developer reference. Sticky contents rail on the left (desktop), one reading column; stacks on phones. */
+:root {
+  --bg: #f7f7fb;
+  --surface: #ffffff;
+  --fg: #16141f;
+  --muted: #5d5a6e;
+  --line: #e3e1ec;
+  --accent: #4b2bd6;          /* the panel's brand purple */
+  --accent-soft: #eeeaff;
+  --code-bg: #f1f0f7;
+  --ok: #1d7a46;
+  --warn: #9a5b00;
+  --warn-soft: #fff4e0;
+  --font-body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #121019; --surface: #1a1724; --fg: #ecebf3; --muted: #a29fb4; --line: #2e2a3d;
+    --accent: #a594ff; --accent-soft: #2a2347; --code-bg: #221e2f; --ok: #5fd08f; --warn: #f0b45a; --warn-soft: #33270f;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #121019; --surface: #1a1724; --fg: #ecebf3; --muted: #a29fb4; --line: #2e2a3d;
+  --accent: #a594ff; --accent-soft: #2a2347; --code-bg: #221e2f; --ok: #5fd08f; --warn: #f0b45a; --warn-soft: #33270f;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--bg); color: var(--fg); font-family: var(--font-body); font-size: 15px; line-height: 1.6;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+.wrap { max-width: 1120px; margin: 0 auto; display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 48px; padding-block: 40px 80px; }
+nav { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 24px); align-self: start; font-size: 14px; }
+nav .brand { font-weight: 700; font-size: 15px; margin-bottom: 4px; }
+nav .ver { font-family: var(--font-mono); font-size: 12px; color: var(--muted); margin-bottom: 20px; }
+nav ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+nav a { display: block; padding: 4px 10px; border-radius: 6px; color: var(--muted); text-decoration: none; }
+nav a:hover, nav a:focus-visible { background: var(--accent-soft); color: var(--accent); outline: none; }
+nav .group { margin-top: 14px; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); padding: 0 10px; }
+main { min-width: 0; }
+h1 { font-size: 34px; line-height: 1.15; margin: 0 0 12px; text-wrap: balance; letter-spacing: -0.01em; }
+h2 { font-size: 22px; margin: 56px 0 12px; padding-top: 8px; text-wrap: balance; scroll-margin-top: 24px; }
+h3 { font-size: 16px; margin: 32px 0 8px; scroll-margin-top: 24px; display: flex; flex-wrap: wrap; align-items: baseline; gap: 10px; }
+p, li { max-width: 68ch; }
+.lede { font-size: 17px; color: var(--muted); max-width: 62ch; }
+a { color: var(--accent); }
+code { font-family: var(--font-mono); font-size: 0.88em; background: var(--code-bg); padding: 1px 5px; border-radius: 4px; overflow-wrap: anywhere; }
+.method { font-family: var(--font-mono); font-size: 12px; font-weight: 500; padding: 2px 7px; border-radius: 4px; background: var(--accent-soft); color: var(--accent); }
+.path { font-family: var(--font-mono); font-size: 15px; font-weight: 500; }
+.codebox { position: relative; margin: 12px 0 20px; }
+pre { margin: 0; background: var(--code-bg); border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px; overflow-x: auto; font-family: var(--font-mono); font-size: 13px; line-height: 1.55; }
+pre code { background: none; padding: 0; font-size: inherit; overflow-wrap: normal; }
+.copy { position: absolute; top: 8px; right: 8px; font: 500 12px var(--font-body); background: var(--surface); color: var(--muted); border: 1px solid var(--line); border-radius: 6px; padding: 3px 9px; cursor: pointer; }
+.copy:hover, .copy:focus-visible { color: var(--accent); border-color: var(--accent); outline: none; }
+.label { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin: 16px 0 -4px; }
+.tablebox { overflow-x: auto; margin: 12px 0 20px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
+table { border-collapse: collapse; width: 100%; font-size: 14px; }
+th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 600; background: var(--bg); }
+tr:last-child td { border-bottom: none; }
+td code { white-space: nowrap; }
+.facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin: 24px 0; }
+.fact { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; min-width: 0; }
+.fact .k { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+.fact .v { font-family: var(--font-mono); font-size: 14px; margin-top: 2px; overflow-wrap: anywhere; }
+.note { background: var(--warn-soft); border-left: 3px solid var(--warn); padding: 10px 14px; border-radius: 0 6px 6px 0; margin: 16px 0; max-width: 72ch; }
+.note strong { color: var(--warn); }
+.yes { color: var(--ok); font-weight: 600; }
+.no { color: var(--muted); }
+footer { margin-top: 64px; color: var(--muted); font-size: 13px; border-top: 1px solid var(--line); padding-top: 16px; }
+@media (max-width: 860px) {
+  .wrap { grid-template-columns: minmax(0, 1fr); gap: 8px; padding-block: 24px 64px; }
+  nav { position: static; border-bottom: 1px solid var(--line); padding-bottom: 16px; }
+  nav ol { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+  h1 { font-size: 28px; }
+}
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+html { scroll-behavior: smooth; }
+</style>
+
+<div class="wrap">
+  <nav aria-label="Contents">
+    <div class="brand">Callit CRM API</div>
+    <div class="ver">v2.3 · callit.reaplift.com</div>
+    <ol>
+      <li><a href="#start">Getting started</a></li>
+      <li><a href="#callyzer">Moving from Callyzer</a></li>
+      <li><a href="#filters">Filters</a></li>
+      <li><a href="#answers">Answers and errors</a></li>
+      <li class="group">Calls</li>
+      <li><a href="#history">History</a></li>
+      <li><a href="#get">Calls by ID</a></li>
+      <li><a href="#stream">History stream</a></li>
+      <li class="group">Reports</li>
+      <li><a href="#summary">Summary</a></li>
+      <li><a href="#employee-summary">Employee summary</a></li>
+      <li><a href="#analysis">Analysis</a></li>
+      <li><a href="#never-attended">Never attended</a></li>
+      <li><a href="#not-pickup">Not picked up</a></li>
+      <li><a href="#unique-clients">Unique clients</a></li>
+      <li><a href="#hourly">Hourly and day-wise</a></li>
+      <li class="group">Employees</li>
+      <li><a href="#employees">Employee details</a></li>
+      <li class="group">More</li>
+      <li><a href="#php">PHP example</a></li>
+      <li><a href="#fields">Field reference</a></li>
+    </ol>
+  </nav>
+
+  <main>
+    <h1>Read your company's calls from your CRM</h1>
+    <p class="lede">The Callit API gives your CRM every company-SIM call your employees make or receive, with the comment, outcome, follow-up date and recording, plus the same reports the Callit panel shows. It follows Callyzer's API v2.3, so a CRM already built for Callyzer only needs a new base URL and key.</p>
+
+    <div class="facts">
+      <div class="fact"><div class="k">Base URL</div><div class="v">https://callit.reaplift.com/api/v2.3/</div></div>
+      <div class="fact"><div class="k">Authentication</div><div class="v">Authorization: Bearer &lt;key&gt;</div></div>
+      <div class="fact"><div class="k">Format</div><div class="v">JSON in, JSON out</div></div>
+      <div class="fact"><div class="k">Rate limit</div><div class="v">5 requests a second per key</div></div>
+    </div>
+
+    <h2 id="start">Getting started</h2>
+    <ol>
+      <li>Log in to the Callit panel at <code>https://callit.reaplift.com</code> as your company's admin.</li>
+      <li>Open <strong>Settings</strong>, scroll to <strong>API keys for your CRM</strong>, type a name such as "Our CRM" and press <strong>Create key</strong>.</li>
+      <li>Copy the key straight away. It starts with <code>rlk_</code> and is shown only once. If it is lost, revoke it and create another.</li>
+      <li>Save it in your CRM's server settings (for example Laravel's <code>.env</code>). Call the API only from your server, never from a web page, so the key never reaches a browser.</li>
+    </ol>
+    <p>A key reads one company's calls: the company of the admin who created it. Revoking a key in Settings stops it at once.</p>
+    <div class="label">Try it</div>
+    <div class="codebox"><button class="copy" type="button">Copy</button><pre><code>curl -X POST https://callit.reaplift.com/api/v2.3/call-log/summary \
+  -H "Authorization: Bearer $CALLIT_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"call_from": 1794441600, "call_to": 1794527999}'</code></pre></div>
+
+    <h2 id="callyzer">Moving from Callyzer</h2>
+    <p>Paths, request fields and answer fields are Callyzer v2.3's. Change these two things in your CRM:</p>
+    <div class="tablebox"><table>
+      <thead><tr><th></th><th>Callyzer</th><th>Callit</th></tr></thead>
+      <tbody>
+        <tr><td>Base URL</td><td><code>https://api1.callyzer.co/api/v2.3/</code></td><td><code>https://callit.reaplift.com/api/v2.3/</code></td></tr>
+        <tr><td>Key</td><td>Callyzer dashboard</td><td>Callit panel, Settings</td></tr>
+      </tbody>
+    </table></div>
+    <p>Where Callit behaves differently:</p>
+    <ul>
+      <li><strong>Recording links work for 24 hours.</strong> Callyzer's links look permanent. Don't store <code>call_recording_url</code>; ask for the call again (<a href="#get">calls by ID</a>) to get a fresh link. Recordings are kept for 12 months.</li>
+      <li><strong>Phone calls only.</strong> <code>call_method</code> and <code>call_mode</code> are optional. <code>WhatsAppCall</code> or <code>Video</code> return no calls.</li>
+      <li><strong>Employee tags are Callit team names.</strong> Teams are set up in the panel.</li>
+      <li><strong>No leads.</strong> <code>lead_id</code> is always empty and the <code>lead/*</code> endpoints don't exist; leads stay in your CRM.</li>
+      <li><strong>Not available yet:</strong> deleting a recording through the API, and webhooks. Until webhooks arrive, poll <a href="#history">history</a> with <code>synced_from</code>/<code>synced_to</code> to pick up new calls.</li>
+      <li><strong>Faster limit:</strong> 5 requests a second per key, against Callyzer's one every 2 seconds.</li>
+    </ul>
+
+    <h2 id="filters">Filters</h2>
+    <p>Every <code>call-log/*</code> endpoint takes these fields in its JSON body. Leave out a field, or send it empty or <code>null</code>, to skip it.</p>
+    <div class="tablebox"><table>
+      <thead><tr><th>Field</th><th>Type</th><th>Meaning</th></tr></thead>
+      <tbody>
+        <tr><td><code>call_from</code>, <code>call_to</code></td><td>Unix seconds</td><td>Calls that started in this range, both ends included. Send both. Without any dates you get today, India time.</td></tr>
+        <tr><td><code>synced_from</code>, <code>synced_to</code></td><td>Unix seconds</td><td>Calls that reached Callit in this range. Use these to fetch only new calls.</td></tr>
+        <tr><td colspan="3">A range can be at most 180 days.</td></tr>
+        <tr><td><code>call_types</code></td><td>string[]</td><td><code>Incoming</code>, <code>Outgoing</code>, <code>Missed</code>, <code>Rejected</code></td></tr>
+        <tr><td><code>duration_grt_than</code>, <code>duration_les_than</code></td><td>seconds</td><td>Talk time more than / less than (the bound itself is not included)</td></tr>
+        <tr><td><code>ringing_time_grt_than</code>, <code>ringing_time_les_than</code></td><td>seconds</td><td>Ringing time more than / less than</td></tr>
+        <tr><td><code>emp_numbers</code></td><td>string[]</td><td>Employees' company SIM numbers: <code>91-9876500000</code>, <code>9876500000</code> and <code>919876500000</code> all work. A number Callit doesn't know is an error.</td></tr>
+        <tr><td><code>emp_tags</code></td><td>string[]</td><td>Team names</td></tr>
+        <tr><td><code>client_numbers</code></td><td>string[]</td><td>The other person's numbers, any format</td></tr>
+        <tr><td><code>is_exclude_numbers</code></td><td>boolean</td><td>Default <code>true</code>: leaves out the numbers your admin marked as excluded (office lines, colleagues)</td></tr>
+        <tr><td><code>call_method</code>, <code>call_mode</code></td><td>string</td><td>Optional. <code>PhoneCall</code> and <code>Voice</code> match every call.</td></tr>
+        <tr><td><code>page_no</code>, <code>page_size</code></td><td>integer</td><td>Lists only. Defaults 1 and 100; <code>page_size</code> from 1 to 100.</td></tr>
+      </tbody>
+    </table></div>
+
+    <h2 id="answers">Answers and errors</h2>
+    <p>Every answer has <code>result</code> and <code>message</code>. Lists also carry <code>total_records</code>, <code>page_no</code> and <code>page_size</code>.</p>
+    <div class="codebox"><button class="copy" type="button">Copy</button><pre><code>{ "result": [ ... ], "message": "Success", "total_records": 215, "page_no": 1, "page_size": 100 }</code></pre></div>
+    <p>An error has <code>"result": null</code> and a message that says what to fix:</p>
+    <div class="tablebox"><table>
+      <thead><tr><th>Status</th><th>When</th><th>Example message</th></tr></thead>
+      <tbody>
+        <tr><td><code>400</code></td><td>A field is wrong</td><td>Invalid call_types. Valid call types are Incoming or Outgoing or Missed or Rejected.</td></tr>
+        <tr><td><code>401</code></td><td>Missing, wrong or revoked key</td><td>Invalid API key</td></tr>
+        <tr><td><code>403</code></td><td>Your company's Callit account is suspended</td><td>Your company is suspended</td></tr>
+        <tr><td><code>429</code></td><td>More than 5 requests in a second. Wait for the <code>Retry-After</code> header (1 second) and try again.</td><td>Too many requests: at most 5 a second for each key</td></tr>
+        <tr><td><code>500</code></td><td>Our fault; try again shortly</td><td>Something went wrong. Please try again.</td></tr>
+      </tbody>
+    </table></div>
+
+    <h2 id="history">Calls</h2>
+    <h3><span class="method">POST</span><span class="path">call-log/history</span></h3>
+    <p>Calls with every detail, newest first, 100 to a page. Takes <a href="#filters">all filters</a>.</p>
+    <div class="label">Request</div>
+    <div class="codebox"><button class="copy" type="button">Copy</button><pre><code>{
+  "call_from": 1794441600,
+  "call_to": 1794527999,
+  "call_types": ["Incoming", "Outgoing"],
+  "emp_numbers": ["91-9876500000"],
+  "page_no": 1,
+  "page_size": 50
+}</code></pre></div>
+    <div class="label">Answer</div>
+    <div class="codebox"><button class="copy" type="button">Copy</button><pre><code>{
+  "result": [
+    {
+      "id": "1042",
+      "emp_name": "Meena Iyer",
+      "emp_code": "CR-7",
+      "emp_country_code": "91",
+      "emp_number": "9876500000",
+      "emp_tags": ["North"],
+      "client_name": "Asha Builders",
+      "client_country_code": "91",
+      "client_number": "9900011111",
+      "duration": 185,
+      "call_type": "Outgoing",
+      "call_date": "2026-11-12",
+      "call_time": "11:00:00",
+      "note": "Site visit planned",
+      "call_recording_url": "https://…r2.cloudflarestorage.com/…(works for 24 hours)",
+      "crm_status": "Interested",
+      "reminder_date": "2026-11-13",
+      "reminder_time": "10:00:00",
+      "synced_at": "2026-11-12 11:03:40 IST",
+      "modified_at": "2026-11-12 11:04:10 IST",
+      "lead_id": "",
+      "call_method": "PhoneCall",
+      "call_mode": "Voice",
+      "ringing_time": 8
+    }
+  ],
+  "message": "Success",
+  "total_records": 1,
+  "page_no": 1,
+  "page_size": 50
+}</code></pre></div>
+    <p><code>note</code>, <code>crm_status</code> and <code>reminder_*</code> come from the after-call pop-up the employee fills in. They can arrive a little after the call itself; <code>modified_at</code> changes when they do.</p>
+
+    <h3 id="get"><span class="method">POST</span><span class="path">call-log/get</span></h3>
+    <p>Up to 20 calls by their <code>id</code>. Use it to refresh a recording link.</p>
+    <div class="codebox"><button class="copy" type="button">Copy</button><pre><code>{ "unique_ids": ["1042", "1043"] }</code></pre></div>
+    <p>The answer's <code>result</code> is a list of calls, as in history. IDs that don't belong to your company are left out.</p>
+
+    <h3 id="stream"><span class="method">POST</span><span class="path">call-log/history/stream</span></h3>
+    <p>Every call in a range as one long answer, for a first import. <code>call_from</code> and <code>call_to</code> are required; other filters work, paging doesn't. The answer is NDJSON (<code>Content-Type: application/x-ndjson</code>): one call per line, then a last line that says how many were sent. Read until that line. At most 100,000 calls per request.</p>
+    <div class="codebox"><button class="copy" type="button">Copy</button><pre><code>{"result": {"id": "1042", "emp_name": "Meena Iyer", "client_number": "9900011111", ...}}
+{"result": {"id": "1041", ...}}
+{"type": "END", "total_records": 2, "message": "Success"}</code></pre></div>
+
+    <h2 id="summary">Reports</h2>
+    <p>Reports take the same <a href="#filters">filters</a> and count calls the same way the Callit panel does. "Connected" means the other side answered and talk time is more than zero.</p>
+    <h3><span class="method">POST</span><span class="path">call-log/summary</span></h3>
+    <p>Totals for the period.</p>
+    <div class="codebox"><button class="copy" type="button">Copy</button><pre><code>{
+  "result": {
+    "total_incoming_calls": 111, "total_incoming_duration": 11905,
+    "total_outgoing_calls": 67,  "total_outgoing_duration": 4806,
+    "total_missed_calls": 36,    "total_rejected_calls": 1,
+    "total_calls": 215,          "total_duration": 17617,
+    "total_never_attended_calls": 16,
+    "total_not_pickup_by_clients_calls": 8,
+    "total_unique_clients": 48,
+    "total_working_hours": "100:19:34",
+    "total_idle_time": "95:23:33",
+    "total_connected_calls": 139
+  },
+  "message": "Success"
+}</code></pre></div>
+    <p>Durations are in seconds. <code>total_working_hours</code> adds up, for each employee and day, the time from their first call's start to their last call's end. <code>total_idle_time</code> is that minus the time spent ringing and talking. Both are <code>HH:mm:ss</code>, and hours can pass 24 over several days or employees.</p>
+
+    <h3 id="employee-summary"><span class="method">POST</span><span class="path">call-log/employee-summary</span></h3>
+    <p>The summary per employee, busiest first, paged. Every active employee is listed, including those with no calls. Each entry has the employee fields, the summary totals plus <code>total_incoming_connected_calls</code> and <code>total_outgoing_connected_calls</code>, the averages <code>avg_duration_per_call</code>, <code>avg_incoming_duration</code> and <code>avg_outgoing_duration</code> (<code>HH:mm:ss</code>), and <code>last_call_log</code> (their latest call in the period, or <code>null</code>).</p>
+    <div class="codebox"><button class="copy" type="button">Copy</button><pre><code>{
+  "result": { "employees": [
+    { "emp_name": "Meena Iyer", "emp_code": "CR-7", "emp_country_code": "91", "emp_number": "9876500000",
+      "emp_tags": ["North"], "total_calls": 5, "total_duration": 245, "total_connected_calls": 2,
+      "total_never_attended_calls": 1, "total_working_hours": "05:00:30", "avg_duration_per_call": "00:00:49",
+      "last_call_log": { "id": "1046", "client_number": "9900044444", "call_type": "Outgoing", ... }, ... }
+  ] },
+  "message": "Success", "total_records": 2, "page_no": 1, "page_size": 100
+}</code></pre></div>
+
+    <h3 id="analysis"><span class="method">POST</span><span class="path">call-log/analysis</span></h3>
+    <p>Averages and the standout employees: <code>average_duration</code> (seconds per call, per day with calls, per incoming and outgoing call), <code>time_analysis</code> (average working and idle time per employee per day), <code>top_dialer</code> (most outgoing calls), <code>top_answered</code> (most answered incoming calls), <code>top_caller</code> (most calls), <code>highest_total_duration</code>, and <code>longest_duration</code> with the longest call in <code>longest_duration.call_log</code>. Any of these is <code>null</code> when there are no calls.</p>
+
+    <h3 id="never-attended"><span class="method">POST</span><span class="path">call-log/never-attended</span></h3>
+    <p>Missed or rejected calls from people nobody spoke to afterwards in the period: the callers still waiting for a call back. Grouped by employee and client, paged by group.</p>
+    <div class="codebox"><button class="copy" type="button">Copy</button><pre><code>{
+  "result": [
+    { "emp_name": "Meena Iyer", "emp_number": "9876500000", "emp_tags": ["North"], ...,
+      "client_name": "", "client_country_code": "91", "client_number": "9900033333",
+      "call_logs": [ { "id": "1045", "duration": 0, "call_type": "Missed", "call_date": "2026-11-12",
+                       "call_time": "13:00:00", "ringing_time": 15, ... } ] }
+  ],
+  "message": "Success", "total_records": 1, "page_no": 1, "page_size": 100
+}</code></pre></div>
+
+    <h3 id="not-pickup"><span class="method">POST</span><span class="path">call-log/not-pickup-by-client</span></h3>
+    <p>Outgoing calls nobody answered, to people nobody spoke to afterwards in the period. Same shape as never attended.</p>
+
+    <h3 id="unique-clients"><span class="method">POST</span><span class="path">call-log/unique-clients</span></h3>
+    <p>One entry per outside number, most recent first, paged: <code>client_name</code>, <code>client_country_code</code>, <code>client_number</code>, the call totals (<code>total_calls</code>, <code>total_duration</code>, incoming, outgoing, missed, rejected, connected, never attended, not picked up), and <code>last_call_log</code> with the employee who had that call.</p>
+
+    <h3 id="hourly"><span class="method">POST</span><span class="path">call-log/hourly-analytics</span></h3>
+    <p>Calls, connected calls and talk time per hour, India time. Optional extra fields: <code>working_hour_from</code> and <code>working_hour_to</code> (<code>HH:mm</code>, 24-hour, counted in whole hours) add "Before" and "After" slots around the working hours; <code>exclude_days</code> (<code>Sun</code>…<code>Sat</code>) leaves days out. Without working hours you get 24 one-hour slots.</p>
+    <div class="codebox"><button class="copy" type="button">Copy</button><pre><code>{
+  "result": {
+    "total_calls": 5, "total_connected_calls": 2, "total_duration": 245,
+    "daily_average": { "avg_calls": 5, "avg_connected_calls": 2, "avg_duration": 245 },
+    "time_slots": [
+      { "slot": "Before 10:00 AM", "total_calls": 1, "total_duration": 0, "total_connected_calls": 0,
+        "total_call_perc": 20, "total_duration_perc": 0, "total_connected_calls_perc": 0 },
+      { "slot": "10:00 AM - 10:59 AM", ... },
+      { "slot": "After 02:00 PM", ... }
+    ]
+  },
+  "message": "Success"
+}</code></pre></div>
+    <h3><span class="method">POST</span><span class="path">call-log/daywise-analytics</span></h3>
+    <p>The same slots, each broken down by date (<code>day_wise</code>: <code>date</code>, <code>day</code>, totals and percentages), with how many days each slot had no calls (<code>days_with_no_calls_in_time_slot</code>).</p>
+
+    <h2 id="employees">Employees</h2>
+    <h3><span class="method">GET</span><span class="path">employee/get</span></h3>
+    <p>Your active employees and the state of their phone. Filters, all optional: <code>emp_numbers</code>, <code>emp_tags</code>, <code>emp_codes</code>, <code>emp_name</code> (exact, any case), <code>page_no</code>, <code>page_size</code>. Send them as a query string (lists as <code>a,b</code>), or use <code>POST</code> with a JSON body.</p>
+    <div class="codebox"><button class="copy" type="button">Copy</button><pre><code>{
+  "result": [
+    { "emp_name": "Meena Iyer", "emp_code": "CR-7", "emp_country_code": "91", "emp_number": "9876500000",
+      "emp_tags": ["North"], "app_version": "0.5.0",
+      "registered_at": "2026-11-11 10:12:00 IST", "modified_at": "2026-11-11 10:12:00 IST",
+      "last_call_at": "2026-11-12 15:00:00 IST", "last_sync_req_at": "2026-11-12 15:01:10 IST",
+      "is_lead_active": false, "is_call_recording_active": true,
+      "device_details": { "device_model": "vivo I2221", "version_code": "0.5.0", "board": "",
+                          "android_version": "16", "sdk_version": "36", "unique_sim_id": "…" },
+      "device_preference": { "is_app_uninstalled": false, "battery_percentage": null },
+      "app_settings": { "default_home_screen": "Call history", "note_dialog": true,
+                        "call_recording_location": "", "is_log_active": true } }
+  ],
+  "message": "Success", "total_records": 1, "page_no": 1, "page_size": 100
+}</code></pre></div>
+    <p><code>is_app_uninstalled</code> is <code>true</code> when the employee has no paired phone. <code>is_call_recording_active</code> is <code>true</code> when a recording arrived in the last 7 days. <code>battery_percentage</code> is <code>null</code> for now.</p>
+
+    <h2 id="php">PHP example</h2>
+    <p>For a Laravel CRM, with the key in <code>.env</code> as <code>CALLIT_API_KEY</code>. This fetches yesterday's calls page by page.</p>
+    <div class="codebox"><button class="copy" type="button">Copy</button><pre><code>use Illuminate\Support\Facades\Http;
+
+$from = now('Asia/Kolkata')->subDay()->startOfDay()->timestamp;
+$to   = now('Asia/Kolkata')->subDay()->endOfDay()->timestamp;
+$page = 1;
+
+do {
+    $response = Http::withToken(env('CALLIT_API_KEY'))
+        ->acceptJson()
+        ->retry(3, 1000, fn ($e) => optional($e->response)->status() === 429)
+        ->post('https://callit.reaplift.com/api/v2.3/call-log/history', [
+            'call_from' => $from,
+            'call_to'   => $to,
+            'page_no'   => $page,
+            'page_size' => 100,
+        ]);
+
+    if ($response->failed()) {
+        throw new RuntimeException('Callit: ' . $response->json('message'));
+    }
+
+    foreach ($response->json('result') as $call) {
+        // $call['client_number'], $call['call_type'], $call['duration'], $call['note'], ...
+    }
+
+    $page++;
+} while (($page - 1) * 100 < $response->json('total_records'));</code></pre></div>
+
+    <h2 id="fields">Field reference</h2>
+    <div class="tablebox"><table>
+      <thead><tr><th>Field</th><th>Meaning</th></tr></thead>
+      <tbody>
+        <tr><td><code>id</code></td><td>Callit's call ID, a string of digits. Stable: use it to avoid saving a call twice.</td></tr>
+        <tr><td><code>emp_name</code>, <code>emp_code</code></td><td>The employee's name and code, as entered in the panel</td></tr>
+        <tr><td><code>emp_country_code</code>, <code>emp_number</code></td><td>The employee's company SIM, split: <code>91</code> and <code>9876500000</code></td></tr>
+        <tr><td><code>emp_tags</code></td><td>The employee's team names</td></tr>
+        <tr><td><code>client_name</code></td><td>The contact name saved on the employee's phone, <code>Private number</code> for a hidden caller, or empty</td></tr>
+        <tr><td><code>client_country_code</code>, <code>client_number</code></td><td>The other person's number, split the same way. A number outside India keeps all its digits and an empty code.</td></tr>
+        <tr><td><code>duration</code></td><td>Talk time in seconds</td></tr>
+        <tr><td><code>call_type</code></td><td><code>Incoming</code>, <code>Outgoing</code>, <code>Missed</code> or <code>Rejected</code></td></tr>
+        <tr><td><code>call_date</code>, <code>call_time</code></td><td>When the call started, India time (<code>yyyy-mm-dd</code>, <code>HH:mm:ss</code>)</td></tr>
+        <tr><td><code>ringing_time</code></td><td>Seconds of ringing before it was answered or ended</td></tr>
+        <tr><td><code>note</code></td><td>The employee's comment from the after-call pop-up</td></tr>
+        <tr><td><code>crm_status</code></td><td>The outcome the employee picked, for example <code>Interested</code>. Your admin sets the list in Settings.</td></tr>
+        <tr><td><code>reminder_date</code>, <code>reminder_time</code></td><td>The follow-up date the employee set, India time</td></tr>
+        <tr><td><code>call_recording_url</code></td><td>A link to the recording that works for 24 hours, or <code>null</code> when there is no recording</td></tr>
+        <tr><td><code>synced_at</code></td><td>When the call reached Callit, <code>yyyy-mm-dd HH:mm:ss IST</code></td></tr>
+        <tr><td><code>modified_at</code></td><td>Last change, for example when the comment arrived</td></tr>
+        <tr><td><code>lead_id</code></td><td>Always empty</td></tr>
+        <tr><td><code>call_method</code>, <code>call_mode</code></td><td>Always <code>PhoneCall</code> and <code>Voice</code></td></tr>
+      </tbody>
+    </table></div>
+    <p>Only calls on employees' company SIMs reach Callit. Calls on a personal SIM never leave the phone, so they are never in the API.</p>
+
+    <footer>Callit by ReapLift · API v2.3, compatible with Callyzer API v2.3 · Questions about access or keys: ask your ReapLift contact.</footer>
+  </main>
+</div>
+
+<script>
+document.querySelectorAll('.copy').forEach(function (btn) {
+  btn.addEventListener('click', function () {
+    var code = btn.parentElement.querySelector('code');
+    var text = code.innerText;
+    var done = function () { btn.textContent = 'Copied'; setTimeout(function () { btn.textContent = 'Copy'; }, 1500); };
+    var fallback = function () {
+      var range = document.createRange(); range.selectNodeContents(code);
+      var sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(range);
+      btn.textContent = 'Selected';
+      setTimeout(function () { btn.textContent = 'Copy'; }, 1500);
+    };
+    try {
+      navigator.clipboard.writeText(text).then(done, fallback);
+    } catch (e) { fallback(); }
+  });
+});
+</script>

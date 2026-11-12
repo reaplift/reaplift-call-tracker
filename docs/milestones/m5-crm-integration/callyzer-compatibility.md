@@ -95,3 +95,9 @@ We followed the sample answers where the tables and samples disagree. `employee-
 ## Proof
 
 `apps/server/test/m5.int.test.ts` (21 tests): every endpoint's fields, every filter, paging, the error messages, revoked and wrong keys, the rate limit, a suspended company, and one company's key never reading another company's calls.
+
+## The client's guide
+
+[crm-api-guide.html](crm-api-guide.html) is the guide for client companies' CRM developers (getting a key, filters, every endpoint with examples, a Laravel example). Shared as a page on 12 November 2026; keep the two in step.
+
+Live check on 12 November 2026, with a temporary key for Country Roads that was revoked straight after: `call-log/summary` for 5 to 12 November returned 215 calls, `call-log/history` and `employee/get` (4 employees) answered, a wrong key and the revoked key got 401.
