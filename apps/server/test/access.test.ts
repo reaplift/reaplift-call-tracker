@@ -14,6 +14,8 @@ describe('classifyRoute', () => {
     ['/api/companies/:id', 'super_admin'],
     ['/api/employees', 'admin'],
     ['/device/v1/calls', 'device'],
+    ['/api/v2.3/call-log/history', 'api_key'],
+    ['/api/integrations/api-keys', 'admin'],
     ['/something', 'unscoped'],
   ])('%s is %s', (url, kind) => {
     expect(classifyRoute(url)).toBe(kind);

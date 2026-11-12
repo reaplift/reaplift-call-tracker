@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react';
-import { api, ApiError } from '../api';
+import { api, ApiError, type ApiKey } from '../api';
 
 interface Item {
   id: string;
@@ -32,6 +32,7 @@ export function Settings() {
         rename={(id, text) => api.updateNoteTemplate(id, { text })}
         toggle={(id, active) => api.updateNoteTemplate(id, { active })}
       />
+      <ApiKeys />
     </section>
   );
 }
@@ -122,6 +123,108 @@ function List(props: {
         </label>
         <button type="submit" disabled={!draft.trim()}>
           Add
+        </button>
+      </form>
+    </div>
+  );
+}
+
+const when = (iso: string | null) => (iso ? new Date(iso).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }) : 'Never');
+
+/** Keys for the company's own CRM to read its calls through the Callyzer-compatible API (M5). */
+function ApiKeys() {
+  const [items, setItems] = useState<ApiKey[]>([]);
+  const [name, setName] = useState('');
+  const [shown, setShown] = useState<{ name: string; key: string } | null>(null);
+  const [error, setError] = useState('');
+
+  const reload = () => api.apiKeys().then((r) => setItems(r.items), (err) => setError(err instanceof ApiError ? err.message : 'Server unreachable'));
+  useEffect(() => {
+    reload();
+  }, []);
+
+  const run = async (work: () => Promise<unknown>) => {
+    setError('');
+    try {
+      await work();
+      await reload();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Server unreachable');
+    }
+  };
+
+  const onCreate = (e: FormEvent) => {
+    e.preventDefault();
+    if (!name.trim()) return;
+    run(async () => {
+      const created = await api.createApiKey(name.trim());
+      setShown({ name: created.name, key: created.key });
+      setName('');
+    });
+  };
+
+  return (
+    <div className="card">
+      <h2>API keys for your CRM</h2>
+      <p className="muted">
+        Your CRM reads your company's calls and reports from <code>{window.location.origin}/api/v2.3/</code>, with the same requests and
+        answers as Callyzer's API v2.3. Send the key as <code>Authorization: Bearer &lt;key&gt;</code>, only from your CRM's server, never
+        from a browser.
+      </p>
+      {error && <p className="error" role="alert">{error}</p>}
+      {shown && (
+        <div className="notice" role="status">
+          <p>
+            <strong>Copy the key for "{shown.name}" now.</strong> It is not shown again; if it is lost, revoke it and make a new one.
+          </p>
+          <p>
+            <code style={{ wordBreak: 'break-all' }}>{shown.key}</code>{' '}
+            <button className="secondary" onClick={() => navigator.clipboard?.writeText(shown.key)}>Copy</button>{' '}
+            <button className="secondary" onClick={() => setShown(null)}>Done</button>
+          </p>
+        </div>
+      )}
+      <table>
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Key starts with</th>
+            <th>Created</th>
+            <th>Last used</th>
+            <th />
+          </tr>
+        </thead>
+        <tbody>
+          {items.map((k) => (
+            <tr key={k.id} className={k.revokedAt ? 'left' : ''}>
+              <td>
+                {k.name}
+                {k.revokedAt && <span className="tag">Revoked</span>}
+              </td>
+              <td><code>{k.keyPrefix}…</code></td>
+              <td>{when(k.createdAt)}</td>
+              <td>{when(k.lastUsedAt)}</td>
+              <td style={{ textAlign: 'right' }}>
+                {!k.revokedAt && (
+                  <button
+                    className="secondary"
+                    onClick={() => window.confirm(`Revoke "${k.name}"? Anything using it stops working at once.`) && run(() => api.revokeApiKey(k.id))}
+                  >
+                    Revoke
+                  </button>
+                )}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <form onSubmit={onCreate} className="filters" style={{ marginTop: 12 }}>
+        <label>
+          Name
+          <input value={name} onChange={(e) => setName(e.target.value)} maxLength={100} placeholder="Our CRM" />
+        </label>
+        <button type="submit" disabled={!name.trim()}>
+          Create key
         </button>
       </form>
     </div>

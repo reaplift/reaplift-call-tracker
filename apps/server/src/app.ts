@@ -2,7 +2,7 @@ import Fastify, { type FastifyServerOptions } from 'fastify';
 import type { Kysely } from 'kysely';
 import type { DeviceSettings, HealthResponse } from '@reaplift/calls-shared';
 import type { Database } from './lib/db.js';
-import { registerAccess } from './modules/auth/access.js';
+import { CRM_API_PREFIX, registerAccess } from './modules/auth/access.js';
 import { registerAuthRoutes } from './modules/auth/routes.js';
 import { registerCallRoutes } from './modules/calls/routes.js';
 import { registerCompanyRoutes } from './modules/companies/routes.js';
@@ -14,6 +14,8 @@ import { registerNoteTemplateRoutes } from './modules/outcomes/templates.js';
 import { registerRecordingRoutes } from './modules/recordings/routes.js';
 import type { RecordingStore } from './lib/storage.js';
 import { registerReportsRoutes } from './modules/reports/routes.js';
+import { registerCallyzerRoutes } from './modules/integration/callyzer.js';
+import { registerApiKeyRoutes } from './modules/integration/keys.js';
 import { isPanelPath, PANEL_CSP, registerPanel } from './modules/panel/routes.js';
 
 declare module 'fastify' {
@@ -89,6 +91,11 @@ export function buildApp({
   // An unexpected error answers in general terms: its message can carry SQL or file paths. The log keeps the detail.
   app.setErrorHandler((err: { statusCode?: number; code?: string; message: string }, req, reply) => {
     const status = err.statusCode ?? 500;
+    // The CRM API answers in Callyzer's shape, errors included.
+    if (req.url.startsWith(CRM_API_PREFIX)) {
+      if (status >= 500) req.log.error({ err }, 'request failed');
+      return reply.code(status >= 500 ? 500 : status).send({ result: null, message: status >= 500 ? 'Something went wrong. Please try again.' : err.message });
+    }
     if (status >= 500) {
       req.log.error({ err }, 'request failed');
       return reply.code(500).send({ error: 'INTERNAL', message: 'Something went wrong. Please try again.' });
@@ -106,6 +113,8 @@ export function buildApp({
   registerOutcomeRoutes(app, { db });
   registerNoteTemplateRoutes(app, { db });
   registerRecordingRoutes(app, { db, now, store: recordingStore });
+  registerApiKeyRoutes(app, { db });
+  registerCallyzerRoutes(app, { db, now, store: recordingStore });
   registerInstallRoutes(app, { db, now, publicBaseUrl, apkDir });
   if (panelDir) app.register((instance) => registerPanel(instance, panelDir));
 

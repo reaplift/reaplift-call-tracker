@@ -6,6 +6,8 @@
  *   create-user --email <e> --name <n> [--role super_admin|admin|manager] [--company <id>]
  *       Prompts for the password (not echoed). Reads it from stdin when not run in a terminal.
  *       Admins and managers need --company; a super admin has none.
+ *   create-api-key --company <id> --name <n>
+ *       A key for the company's CRM to call /api/v2.3/... (M5). Printed once; only its hash is stored.
  *   unlock-user --email <e>
  *       Opens a login locked by wrong passwords.
  *   seed-dev
@@ -19,6 +21,7 @@ import { loadConfig } from './config.js';
 import { createDb, createPool } from './lib/db.js';
 import { createUser, UserInputError, USER_ROLES, type UserRole } from './modules/auth/users.js';
 import { seedOutcomes } from './modules/outcomes/defaults.js';
+import { createApiKey } from './modules/integration/keys.js';
 
 const DEV_PASSWORD = 'calls-dev-1';
 
@@ -84,6 +87,15 @@ async function main() {
         console.log(`created ${role} ${f.email} (${id})`);
         break;
       }
+      case 'create-api-key': {
+        const f = flags(rest);
+        const companyId = Number(f.company);
+        if (!Number.isSafeInteger(companyId) || companyId <= 0 || !f.name?.trim())
+          throw new UserInputError('usage: create-api-key --company <id> --name <n>');
+        const { id, key } = await createApiKey(db, { companyId, name: f.name.trim(), createdBy: null });
+        console.log(`created API key ${id} for company ${companyId}. Copy it now; it is not shown again:\n${key}`);
+        break;
+      }
       case 'unlock-user': {
         const f = flags(rest);
         const done = await sql`
@@ -111,7 +123,7 @@ async function main() {
         break;
       }
       default:
-        throw new UserInputError('commands: create-company, create-user, unlock-user, seed-dev');
+        throw new UserInputError('commands: create-company, create-user, create-api-key, unlock-user, seed-dev');
     }
   } finally {
     await db.destroy();

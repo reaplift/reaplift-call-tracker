@@ -49,3 +49,4 @@ td.actions { display: flex; gap: 6px; flex-wrap: wrap; }
 @media (max-width: 700px) {
   table { display: block; overflow-x: auto; }
 }
+.notice { border: 1px solid var(--brand); border-radius: 8px; padding: 8px 12px; margin: 8px 0; }

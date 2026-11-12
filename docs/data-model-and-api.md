@@ -137,7 +137,7 @@ An employee has at most one active device; pairing a new phone revokes the old o
 
 | Table | Columns | Milestone |
 | --- | --- | --- |
-| `api_keys` | `id`, `name`, `key_hash unique`, `prefix`, `created_by`, `created_at`, `revoked_at`, `last_used_at` | M5 |
+| `api_keys` | `id`, `company_id`, `name`, `key_prefix`, `key_hash unique` (SHA-256), `created_by`, `created_at`, `last_used_at`, `revoked_at`. Built 12 November 2026 (migration 0007) | M5 |
 | `webhooks` | `id`, `url`, `secret_encrypted`, `events text[]`, `enabled`, `created_at` | M5 |
 | `webhook_deliveries` | `id bigint`, `webhook_id`, `event`, `payload jsonb`, `status`, `attempts`, `next_attempt_at`, `last_status_code`, `created_at` | M5 |
 
@@ -183,7 +183,7 @@ An employee has at most one active device; pairing a new phone revokes the old o
 | GET, POST, DELETE | `/api/teams`, `/api/excluded-numbers`, `/api/users` | admin | M2 |
 | GET | `/api/devices` (health list) | admin, manager | M4 |
 | POST | `/api/app-releases` | admin | M4 |
-| GET, POST, DELETE | `/api/integrations/api-keys`, `/api/integrations/webhooks` | admin | M5 |
+| GET, POST, DELETE | `/api/integrations/api-keys` (built 12 November 2026; the key is returned once, from POST), `/api/integrations/webhooks` | admin | M5 |
 | GET | `/api/calls/:id/recording` (returns a 5-minute play link; 410 `RECORDING_EXPIRED` after 365 days, D4). Built 11 November 2026 | admin, manager | M6 |
 
 ### Phone app (`/device/v1`, `Authorization: Bearer <device token>`)
@@ -211,9 +211,13 @@ A revoked device gets 401 `DEVICE_REVOKED` and the app stops syncing and shows "
 | GET | `/i/:code` | Install page: download button, the 6-digit code, steps | M1 |
 | GET | `/app/latest.apk` | Latest APK | M1 |
 
-### CRM (`/v1`, `Authorization: Bearer <API key>`, M5)
+### CRM (`/api/v2.3/`, `Authorization: Bearer <API key>`, M5)
 
-The same reports and history as the panel, in Callyzer's shape so the CRM gets everything it would from Callyzer: `POST /v1/reports/summary`, `/employees`, `/analysis`, `/never-attended`, `/not-picked-up`, `/unique-numbers`, `/hourly`, `/daywise`; `POST /v1/calls/search`; `POST /v1/calls/stream` (NDJSON); `GET /v1/calls/:id`; `GET, PUT /v1/employees` (the CRM pushes its employees); `GET /v1/calls/:id/recording` (M6). POST is used for searches because the call filter has arrays. Rate limit 5 requests a second per key. Webhook events: `call.synced`, `recording.uploaded`, `recording.missing`, `device.unhealthy`; signed with HMAC-SHA256 in `X-Signature`, retried with backoff for 24 hours.
+Built 12 November 2026 as a Callyzer API v2.3-compatible layer over our tables, so a CRM written for Callyzer changes only its base URL and key; every field and difference is in [callyzer-compatibility.md](milestones/m5-crm-integration/callyzer-compatibility.md). A key reads one company's calls. Answers are `{ result, message }` (lists add `total_records`, `page_no`, `page_size`); errors are `{ result: null, message }`. Rate limit 5 requests a second per key (429).
+
+`POST call-log/summary`, `call-log/employee-summary`, `call-log/analysis`, `call-log/never-attended`, `call-log/not-pickup-by-client`, `call-log/unique-clients`, `call-log/hourly-analytics`, `call-log/daywise-analytics`, `call-log/history`, `call-log/get`, `call-log/history/stream` (NDJSON); `GET` or `POST employee/get`.
+
+Still planned for M5: employee push from the CRM (5.3) and webhooks `call.synced`, `recording.uploaded`, `recording.missing`, `device.unhealthy`, signed with HMAC-SHA256 in `X-Signature` and retried with backoff for 24 hours (5.4).
 
 ### Error codes
 

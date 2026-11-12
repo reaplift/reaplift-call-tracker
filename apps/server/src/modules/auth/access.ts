@@ -23,6 +23,8 @@ declare module 'fastify' {
     scope?: Scope;
     /** Set for every `/device/v1/...` route except pairing. */
     device?: DeviceAuth;
+    /** Set for every CRM API route (`/api/v2.3/...`, M5): the key and its one company. */
+    apiKey?: { id: string; companyId: number };
   }
 }
 
@@ -42,7 +44,10 @@ export const SESSION_ROUTES = ['/api/auth/logout', '/api/auth/me', '/api/auth/co
 /** Routes for the super admin only (P1): managing companies. */
 export const SUPER_ADMIN_ROUTES = ['/api/companies', '/api/companies/:id'];
 
-export type RouteKind = 'public' | 'session' | 'super_admin' | 'admin' | 'manager' | 'device' | 'unscoped';
+export type RouteKind = 'public' | 'session' | 'super_admin' | 'admin' | 'manager' | 'device' | 'api_key' | 'unscoped';
+
+/** The CRM API (M5): Callyzer v2.3's paths, so a CRM built for Callyzer changes only its base URL and key. */
+export const CRM_API_PREFIX = '/api/v2.3/';
 
 /** Managers can read call history and reports; team, user and employee setup stays with admins. */
 export function classifyRoute(url: string): RouteKind {
@@ -50,9 +55,29 @@ export function classifyRoute(url: string): RouteKind {
   if (SESSION_ROUTES.includes(url)) return 'session';
   if (SUPER_ADMIN_ROUTES.includes(url)) return 'super_admin';
   if (url.startsWith('/device/v1/')) return 'device';
+  if (url.startsWith(CRM_API_PREFIX)) return 'api_key';
   if (url === '/api/calls' || url.startsWith('/api/calls/') || url.startsWith('/api/reports/')) return 'manager';
   if (url.startsWith('/api/')) return 'admin';
   return 'unscoped';
+}
+
+/** data-model-and-api.md: 5 requests a second per key (Callyzer allows one every 2 seconds). */
+export const CRM_API_PER_SECOND = 5;
+
+/** Requests per key in the last second, kept in memory: the app runs as one process (D10). */
+export class RateLimiter {
+  private hits = new Map<string, number[]>();
+  constructor(private perSecond: number) {}
+  allow(key: string, nowMs: number): boolean {
+    const recent = (this.hits.get(key) ?? []).filter((t) => nowMs - t < 1000);
+    if (recent.length >= this.perSecond) {
+      this.hits.set(key, recent);
+      return false;
+    }
+    recent.push(nowMs);
+    this.hits.set(key, recent);
+    return true;
+  }
 }
 
 const STATE_CHANGING = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
@@ -69,6 +94,7 @@ export function registerAccess(
   deps: { db: Kysely<Database>; now: () => Date; panelOrigin: string },
 ) {
   const { db, now, panelOrigin } = deps;
+  const rateLimiter = new RateLimiter(CRM_API_PER_SECOND);
 
   app.addHook('onRequest', async (req, reply) => {
     const url = req.routeOptions.url;
@@ -76,7 +102,8 @@ export function registerAccess(
     const kind = classifyRoute(url);
 
     // Cookie-carrying requests from another site are refused. Phones carry a token, not a cookie.
-    if (STATE_CHANGING.has(req.method) && url.startsWith('/api/') && req.headers.origin !== panelOrigin) {
+    // The CRM API carries a key, not a cookie, so it is called from servers, not browsers.
+    if (STATE_CHANGING.has(req.method) && url.startsWith('/api/') && kind !== 'api_key' && req.headers.origin !== panelOrigin) {
       return sendError(reply, 403, 'FORBIDDEN', 'Request origin not allowed');
     }
 
@@ -115,6 +142,35 @@ export function registerAccess(
         companyId: device.company_id,
         pairedAt: device.paired_at,
       };
+      return;
+    }
+
+    if (kind === 'api_key') {
+      // Callyzer's error shape, so a CRM built for Callyzer reads it.
+      const refuse = (status: number, message: string) => reply.code(status).send({ result: null, message });
+      const header = req.headers.authorization ?? '';
+      const key = header.startsWith('Bearer ') ? header.slice('Bearer '.length).trim() : '';
+      const row = key
+        ? (
+            await sql<{ id: string; company_id: number; revoked_at: Date | null; company_status: string }>`
+              select k.id, k.company_id, k.revoked_at, co.status as company_status
+              from api_keys k join companies co on co.id = k.company_id
+              where k.key_hash = ${hashToken(key)}
+            `.execute(db)
+          ).rows[0]
+        : undefined;
+      if (!row || row.revoked_at) return refuse(401, 'Invalid API key');
+      if (row.company_status !== 'active') return refuse(403, 'Your company is suspended');
+      if (!rateLimiter.allow(row.id, now().getTime())) {
+        reply.header('retry-after', '1');
+        return refuse(429, 'Too many requests: at most 5 a second for each key');
+      }
+      await sql`
+        update api_keys set last_used_at = ${now()}
+        where id = ${row.id} and (last_used_at is null or last_used_at < ${new Date(now().getTime() - 60_000)})
+      `.execute(db);
+      req.apiKey = { id: row.id, companyId: row.company_id };
+      req.scope = { companyId: row.company_id, employeeIds: null };
       return;
     }
 

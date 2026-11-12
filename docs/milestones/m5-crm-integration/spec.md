@@ -1,6 +1,6 @@
 # M5. CRM integration
 
-- Status: Not started
+- Status: In progress. Tasks 5.1 and 5.2 built 12 November 2026 as a Callyzer v2.3-compatible API ([callyzer-compatibility.md](callyzer-compatibility.md))
 - Owner: unassigned
 - Starts after: M2
 - External prerequisites: E3 (the CRM's code, a test copy, a way to deploy to it)
@@ -40,8 +40,8 @@ Only one filter applies: the phone drops any call not on the chosen company SIM.
 
 | Task | Name |
 | --- | --- |
-| 5.1 | API keys and the `/v1` authentication |
-| 5.2 | `/v1` reports, call search and stream, using M2's functions |
+| 5.1 | API keys and authentication (built: `/api/v2.3/`, keys in Settings) |
+| 5.2 | Reports, call search and stream in Callyzer v2.3's shape (built) |
 | 5.3 | Employee push and matching |
 | 5.4 | Webhooks: deliveries, signing, retries, delivery log |
 | 5.5 | OpenAPI document and a PHP example client |

@@ -64,6 +64,15 @@ export interface ReportSummary {
   employeeCount: number;
 }
 
+export interface ApiKey {
+  id: string;
+  name: string;
+  keyPrefix: string;
+  createdAt: string;
+  lastUsedAt: string | null;
+  revokedAt: string | null;
+}
+
 export const callQueryString = (q: CallQuery) =>
   new URLSearchParams(Object.entries(q).filter(([, v]) => v !== undefined && v !== '') as [string, string][]).toString();
 
@@ -88,5 +97,9 @@ export const api = {
   addNoteTemplate: (text: string) => request<NoteTemplate>('POST', '/api/note-templates', { text }),
   updateNoteTemplate: (id: string, body: Partial<{ text: string; active: boolean }>) =>
     request<NoteTemplate>('PATCH', `/api/note-templates/${id}`, body),
+  /** CRM API keys (M5): the key itself comes back once, from create. */
+  apiKeys: () => request<{ items: ApiKey[] }>('GET', '/api/integrations/api-keys'),
+  createApiKey: (name: string) => request<ApiKey & { key: string }>('POST', '/api/integrations/api-keys', { name }),
+  revokeApiKey: (id: string) => request<void>('DELETE', `/api/integrations/api-keys/${id}`),
   reportSummary: (q: CallQuery) => request<ReportSummary>('GET', `/api/reports/summary?${callQueryString(q)}`),
 };
