@@ -1,5 +1,12 @@
 # M6 test evidence
 
+## 12 November 2026: live on Hostinger with Cloudflare R2
+
+- Bucket `reaplift-call-recordings` (private) and an Account API token limited to it (Object Read & Write). Keys written to `~/callit-app/.env` with `scripts/hostinger/set-r2-keys.sh` (typed by the owner in their own terminal; never in the repo or the chat).
+- Round trip run on the Hostinger server with the app's own storage code: upload through a signed PUT link → 200; size seen by the server 47 of 47 bytes; download through a play link → 200, identical bytes; test object deleted. The token cannot read lifecycle rules (expected for Object Read & Write); the rules are checked in the dashboard.
+- The app's start line on Hostinger: `"recordings":"on"`, version `20261112020042-d9a08f2`.
+- Still to see: a real phone's dialer recording arriving from the Country Roads beta (E1, T4).
+
 ## 11 November 2026: recordings built and run end to end on the emulator
 
 Android 15 emulator (`calls35`, `sdk_gphone64_arm64`), app 0.4.0 (debug), local server on MariaDB 11.8, and SeaweedFS 3.80 as the S3-compatible stand-in for Cloudflare R2 (same S3 protocol; MinIO no longer publishes community images). **Not yet run against R2 itself (waits on E6 keys) or on a real phone's dialer (E1, T4).**
