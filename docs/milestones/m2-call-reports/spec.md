@@ -77,6 +77,8 @@ Out: the daily email (M3), device health columns (M4), recording coverage (M6), 
 
 - One scope function returns the employee IDs a user may see; every employee-data query uses it. A route-walking test calls every `/api` route as a manager with another team's employee and expects 404.
 
+- **Teams page (design for approval, 12 November 2026; screens in [design-review.html](../m10-whatsapp-templates/design-review.html), Teams tab):** Add team (name, employees, managers), Add employee to a team, Add manager (pick an existing manager, or create one with name and email and a one-time temporary password), Remove, Delete team. Built today: `GET`, `POST`, `DELETE /api/teams`. Still needed: `POST`, `DELETE /api/teams/:id/members` and `POST`, `DELETE /api/teams/:id/managers`, with the same company checks and an audit entry for each change.
+
 ### 2.2 Jobs table, worker, daily stats
 
 - Accepting a call batch queues a recompute for each (employee, India day) touched. Stats for a day are recomputed whole, so late-arriving calls fix the numbers.
