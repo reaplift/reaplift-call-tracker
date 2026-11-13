@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import type { Company } from '@reaplift/calls-shared';
 import { api, type User } from './api';
 import { CallHistory } from './pages/CallHistory';
 import { Dashboard, type CallsPreset } from './pages/Dashboard';
@@ -42,6 +43,7 @@ export function App() {
       <aside className="sidebar">
         <img className="logo" src={logo} alt="ReapLift" />
         <div className="product">Callit</div>
+        {user.role === 'super_admin' && <CompanyPicker user={user} onPicked={setUser} />}
         <nav aria-label="Pages">
           {PAGES.filter((p) => !(p.adminOnly && user.role === 'manager')).map((p) => (
             <button
@@ -65,13 +67,48 @@ export function App() {
           </button>
         </nav>
       </aside>
-      <main>
+      <main key={user.companyId ?? 'none'}>
+        {user.role === 'super_admin' && user.companyId === null ? (
+          <section>
+            <h1>Pick a company</h1>
+            <p className="muted">As super admin you work in one company at a time. Pick it in the sidebar.</p>
+          </section>
+        ) : (
+          <>
         {page === 'dashboard' && <Dashboard onOpenCalls={openCalls} />}
         {page === 'calls' && <CallHistory key={callsPreset ? JSON.stringify(callsPreset) : 'all'} preset={callsPreset} />}
         {page === 'reports' && <Reports />}
         {page === 'employees' && <Employees />}
-        {page === 'settings' && <Settings />}
+        {page === 'settings' && <Settings isSuperAdmin={user.role === 'super_admin'} />}
+          </>
+        )}
       </main>
     </div>
+  );
+}
+
+/** The super admin works in one company at a time (P1): the server keeps the choice with the login session. */
+function CompanyPicker({ user, onPicked }: { user: User; onPicked: (user: User) => void }) {
+  const [companies, setCompanies] = useState<Company[]>([]);
+  useEffect(() => {
+    api.companies().then((r) => setCompanies(r.items), () => {});
+  }, []);
+  return (
+    <label className="company-picker">
+      Company
+      <select
+        value={user.companyId ?? ''}
+        onChange={(e) => e.target.value && api.selectCompany(Number(e.target.value)).then((r) => onPicked(r.user), () => {})}
+      >
+        <option value="" disabled>
+          Pick a company
+        </option>
+        {companies.map((c) => (
+          <option key={c.id} value={c.id}>
+            {c.name}
+          </option>
+        ))}
+      </select>
+    </label>
   );
 }

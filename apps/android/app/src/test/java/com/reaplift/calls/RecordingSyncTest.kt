@@ -43,7 +43,8 @@ private class FakeAudio(vararg files: AudioFile) : AudioSource {
     }
 }
 
-private class FakeUploader(private val answer: UploadResult = UploadResult.Done) : RecordingUploader {
+private class FakeUploader(private val answer: UploadResult = UploadResult.Done, private val notSynced: Set<String> = emptySet()) : RecordingUploader {
+    var missingRequests = 0
     val uploaded = mutableListOf<Pair<String, String>>()
     val missing = mutableListOf<String>()
     val reasons = mutableListOf<MissingReason>()
@@ -51,10 +52,11 @@ private class FakeUploader(private val answer: UploadResult = UploadResult.Done)
         uploaded += call.deviceCallId to file.uri
         return answer
     }
-    override suspend fun reportMissing(call: OutgoingCall, reason: MissingReason): UploadResult {
-        missing += call.deviceCallId
-        reasons += reason
-        return answer
+    override suspend fun reportMissing(calls: List<Pair<OutgoingCall, MissingReason>>): Set<String> {
+        missingRequests++
+        missing += calls.map { it.first.deviceCallId }
+        reasons += calls.map { it.second }
+        return notSynced
     }
 }
 
@@ -137,14 +139,14 @@ class RecordingSyncTest {
         assertTrue(notReady.marks.isEmpty())
         val down = object : RecordingUploader {
             override suspend fun upload(call: OutgoingCall, file: AudioFile, score: Int): UploadResult = throw java.io.IOException("offline")
-            override suspend fun reportMissing(call: OutgoingCall, reason: MissingReason): UploadResult = throw java.io.IOException("offline")
+            override suspend fun reportMissing(calls: List<Pair<OutgoingCall, MissingReason>>): Set<String> = throw java.io.IOException("offline")
         }
         val offline = FakeLedger(c)
         assertTrue(RecordingSync(offline, FakeAudio(f)).run(down, 0) { end + 60_000 } is SendResult.Failed)
         assertTrue(offline.marks.isEmpty())
         val revoked = object : RecordingUploader {
             override suspend fun upload(call: OutgoingCall, file: AudioFile, score: Int): UploadResult = throw DeviceRevokedException()
-            override suspend fun reportMissing(call: OutgoingCall, reason: MissingReason): UploadResult = throw DeviceRevokedException()
+            override suspend fun reportMissing(calls: List<Pair<OutgoingCall, MissingReason>>): Set<String> = throw DeviceRevokedException()
         }
         assertEquals(SendResult.Revoked, RecordingSync(FakeLedger(c), FakeAudio(f)).run(revoked, 0) { end + 60_000 })
     }
@@ -171,5 +173,23 @@ class RecordingSyncTest {
     fun aFolderNamedAfterAClientNumberDoesNotLeaveThePhone() {
         assertEquals("Recorder/#/", RecordingMatcher.withoutNumbers("Recorder/919845012345/"))
         assertEquals("Recordings/Call/", RecordingMatcher.withoutNumbers("Recordings/Call/"))
+    }
+
+    @Test
+    fun manyMissingRecordingsGoInOneRequest() = runTest {
+        val calls = (1..12).map { call("m$it", talk = 60, start = T0 + it * 600_000L) }
+        val uploader = FakeUploader()
+        val ledger = FakeLedger(*calls.toTypedArray())
+        RecordingSync(ledger, FakeAudio()).run(uploader, 0) { T0 + 24 * 3_600_000L }
+        assertEquals(1, uploader.missingRequests)
+        assertEquals(12, uploader.missing.size)
+        assertTrue(ledger.marks.values.all { it.first == "missing" })
+    }
+
+    @Test
+    fun aCallTheServerDoesNotHaveYetIsReportedAgainLater() = runTest {
+        val ledger = FakeLedger(c)
+        RecordingSync(ledger, FakeAudio()).run(FakeUploader(notSynced = setOf("1")), 0) { end + 11 * 60_000 }
+        assertTrue("not marked, so it is reported again", ledger.marks.isEmpty())
     }
 }

@@ -14,6 +14,7 @@ import type { Database } from '../../lib/db.js';
 import { audit } from '../../lib/audit.js';
 import { createSessionToken, hashToken } from '../../lib/auth.js';
 import { sendError } from '../../lib/errors.js';
+import { neverRecordNumbers, numberHash } from '../never-record/routes.js';
 import { normalizeNumber } from '../../lib/phone.js';
 import { findLiveCode } from '../employees/pairing.js';
 
@@ -112,7 +113,8 @@ export function registerDeviceRoutes(
         select text from note_templates where company_id = ${req.device!.companyId} and active = 1 order by sort_order, text
       `.execute(db)
     ).rows.map((r) => r.text);
-    const body: DeviceConfig = { settings, outcomes, noteTemplates };
+    const neverRecord = [...(await neverRecordNumbers(db, req.device!.companyId))].map(numberHash);
+    const body: DeviceConfig = { settings, outcomes, noteTemplates, neverRecord };
     return reply.code(200).send(body);
   });
 
@@ -160,6 +162,8 @@ export function registerDeviceRoutes(
       unique.set(call.deviceCallId, call);
     }
     const rows: Array<{ call: DeviceCall; number: string; kind: string }> = [];
+    // M12: a phone that hasn't picked up the list yet (or an older app) may still send these; they are never stored.
+    const neverRecord = await neverRecordNumbers(db, device.companyId);
     for (const call of unique.values()) {
       const started = new Date(call.startedAt).getTime();
       if (started > latest) {
@@ -171,6 +175,10 @@ export function registerDeviceRoutes(
         continue;
       }
       const { number, kind } = normalizeNumber(call.number);
+      if (number && neverRecord.has(number)) {
+        result.rejected.push({ deviceCallId: call.deviceCallId, reason: 'never record' });
+        continue;
+      }
       rows.push({ call, number, kind });
     }
 

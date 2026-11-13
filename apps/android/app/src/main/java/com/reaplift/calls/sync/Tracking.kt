@@ -38,7 +38,7 @@ object Tracking {
         val db = LocalDb(context)
         val sync = CallSync(AndroidCallLog(context), db, db)
         val since = prefs.pairedAt - prefs.initialSyncDays * 86_400_000L
-        prefs.lastCallLogId = sync.collect(prefs.lastCallLogId, since, matcher)
+        prefs.lastCallLogId = sync.collect(prefs.lastCallLogId, since, matcher, NeverRecordList(prefs.neverRecordHashes))
 
         // After-call form (M4): ask about each new call once, straight away, even offline. When the pop-up can show
         // over other apps it handles calls that just ended, so they get no notification as well.
@@ -78,10 +78,15 @@ object Tracking {
             )
             if (recordings !is SendResult.Done) result = recordings
         }
-        if (result is SendResult.Done) {
+        // Settings change rarely: fetch them at most every 30 minutes, not on every sync, to keep requests low on
+        // shared hosting. A never-record number added in between is still refused by the server.
+        if (result is SendResult.Done && System.currentTimeMillis() - prefs.lastConfigAt > CONFIG_EVERY_MS) {
             runCatching { api.config() }.onSuccess { config ->
                 db.replaceOutcomes(config.outcomes.map { Outcome(it.id, it.label) })
                 db.replaceNoteTemplates(config.noteTemplates)
+                prefs.neverRecordHashes = config.neverRecord.toSet()
+                db.removeNeverRecord(NeverRecordList(prefs.neverRecordHashes))
+                prefs.lastConfigAt = System.currentTimeMillis()
             }
         }
         when (result) {
@@ -104,6 +109,7 @@ object Tracking {
 
     /** Calls this recent are the pop-up's; older ones (it was closed, or the phone was off) get the notification. */
     private const val POPUP_HANDLES_MS = 5 * 60_000L
+    private const val CONFIG_EVERY_MS = 30 * 60_000L
 
     private fun setState(context: Context, prefs: Prefs, state: TrackingState) {
         if (prefs.state == state) return

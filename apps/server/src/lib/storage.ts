@@ -1,5 +1,5 @@
 import { randomBytes } from 'node:crypto';
-import { GetObjectCommand, HeadObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
+import { DeleteObjectCommand, GetObjectCommand, HeadObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 
 /**
@@ -13,6 +13,8 @@ export interface RecordingStore {
   playUrl(key: string, seconds: number): Promise<string>;
   /** The stored object's size, or null when nothing was uploaded under that key. */
   size(key: string): Promise<number | null>;
+  /** Deletes the object (M12: past calls of a never-record number). Deleting a missing object is not an error. */
+  remove(key: string): Promise<void>;
 }
 
 export interface S3Settings {
@@ -35,6 +37,9 @@ export function s3Store(s: S3Settings): RecordingStore {
     uploadUrl: (key, contentType, seconds) =>
       getSignedUrl(client, new PutObjectCommand({ Bucket: s.bucket, Key: key, ContentType: contentType }), { expiresIn: seconds }),
     playUrl: (key, seconds) => getSignedUrl(client, new GetObjectCommand({ Bucket: s.bucket, Key: key }), { expiresIn: seconds }),
+    remove: async (key) => {
+      await client.send(new DeleteObjectCommand({ Bucket: s.bucket, Key: key }));
+    },
     size: async (key) => {
       try {
         const head = await client.send(new HeadObjectCommand({ Bucket: s.bucket, Key: key }));

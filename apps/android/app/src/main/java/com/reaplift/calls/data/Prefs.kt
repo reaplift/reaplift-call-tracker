@@ -70,6 +70,16 @@ class Prefs(context: Context) {
         get() = prefs.getBoolean("test_call_done", false)
         set(v) = prefs.edit { putBoolean("test_call_done", v) }
 
+    /** M12: SHA-256 of each never-record number, from the server's settings. */
+    var neverRecordHashes: Set<String>
+        get() = prefs.getStringSet("never_record_hashes", emptySet()) ?: emptySet()
+        set(v) = prefs.edit { putStringSet("never_record_hashes", v) }
+
+    /** When the settings (outcomes, notes, never-record list) were last fetched: at most every 30 minutes. */
+    var lastConfigAt: Long
+        get() = prefs.getLong("last_config_at", 0)
+        set(v) = prefs.edit { putLong("last_config_at", v) }
+
     /** App 0.5.1: calls marked "recording missing" before the matching fix were looked at again, once. */
     var recheckedMissingRecordings: Boolean
         get() = prefs.getBoolean("rechecked_missing_recordings_051", false)

@@ -123,6 +123,19 @@ class LocalDb(context: Context) :
     override fun callsNeedingRecording(sinceMs: Long, limit: Int): List<OutgoingCall> =
         query("sent_at is not null and recording_status is null and started_at >= $sinceMs", "started_at asc", limit)
 
+    /**
+     * M12: removes every call, sent or not, whose number is on the never-record list, so it leaves the app's history
+     * too. Returns how many were removed.
+     */
+    fun removeNeverRecord(list: com.reaplift.calls.sync.NeverRecordList): Int {
+        val numbers = readableDatabase.rawQuery("select distinct number from outbox", null).use { c ->
+            buildList { while (c.moveToNext()) add(c.getString(0).orEmpty()) }
+        }.filter { list.contains(it) }
+        var removed = 0
+        for (n in numbers) removed += writableDatabase.delete("outbox", "number = ?", arrayOf(n))
+        return removed
+    }
+
     /** Calls marked missing since `sinceMs` are looked at again (app 0.5.1). Returns how many. */
     fun resetMissingRecordings(sinceMs: Long): Int {
         val values = android.content.ContentValues().apply {

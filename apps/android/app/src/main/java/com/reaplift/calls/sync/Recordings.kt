@@ -60,8 +60,11 @@ data class MissingReason(
 interface RecordingUploader {
     /** Throws DeviceRevokedException when unpaired, or another exception when the network or storage failed. */
     suspend fun upload(call: OutgoingCall, file: AudioFile, score: Int): UploadResult
-    /** No file matched the call: the panel flags it, and the reason helps tune the matching per brand. */
-    suspend fun reportMissing(call: OutgoingCall, reason: MissingReason): UploadResult
+    /**
+     * No file matched these calls (up to 50, one request): the panel flags them, and the reasons help tune the
+     * matching per brand. Returns the calls the server doesn't have yet; they are reported again later.
+     */
+    suspend fun reportMissing(calls: List<Pair<OutgoingCall, MissingReason>>): Set<String>
 }
 
 object RecordingRules {
@@ -149,6 +152,9 @@ class RecordingSync(private val ledger: RecordingLedger, private val audio: Audi
         var uploaded = 0
         var missing = 0
         val used = ledger.usedRecordingUris().toMutableSet()
+        // Missing ones go to the server together at the end: one request, not one per call.
+        val toReport = mutableListOf<Pair<OutgoingCall, MissingReason>>()
+        var uploadsPaused = false
         for (call in ledger.callsNeedingRecording(sinceMs, BATCH_SIZE)) {
             if (!RecordingRules.expectsRecording(call)) {
                 ledger.markRecording(call.deviceCallId, STATUS_NOT_EXPECTED, null, now())
@@ -158,12 +164,13 @@ class RecordingSync(private val ledger: RecordingLedger, private val audio: Audi
             if (now() - end < RecordingRules.SETTLE_MS) continue
             val files = audio.filesAddedBetween(call.startedAtMs - RecordingRules.BEFORE_START_MS, end + RecordingRules.GIVE_UP_MS)
             val match = RecordingMatcher.best(call, files, used)
+            if (match == null) {
+                if (now() - end >= RecordingRules.GIVE_UP_MS) toReport += call to RecordingMatcher.explain(call, files, used)
+                continue
+            }
+            if (uploadsPaused) continue
             val result = try {
-                when {
-                    match != null -> uploader.upload(call, match.first, match.second)
-                    now() - end >= RecordingRules.GIVE_UP_MS -> uploader.reportMissing(call, RecordingMatcher.explain(call, files, used))
-                    else -> continue
-                }
+                uploader.upload(call, match.first, match.second)
             } catch (e: DeviceRevokedException) {
                 return SendResult.Revoked
             } catch (e: Exception) {
@@ -171,18 +178,28 @@ class RecordingSync(private val ledger: RecordingLedger, private val audio: Audi
             }
             when (result) {
                 UploadResult.Done, UploadResult.AlreadyThere -> {
-                    if (match != null) {
-                        ledger.markRecording(call.deviceCallId, STATUS_UPLOADED, match.first.uri, now())
-                        used += match.first.uri
-                        uploaded++
-                    } else {
-                        ledger.markRecording(call.deviceCallId, STATUS_MISSING, null, now())
-                        onMissing(call)
-                        missing++
-                    }
+                    ledger.markRecording(call.deviceCallId, STATUS_UPLOADED, match.first.uri, now())
+                    used += match.first.uri
+                    uploaded++
                 }
                 UploadResult.NotSyncedYet -> Unit
-                UploadResult.NotConfigured -> return SendResult.Done(uploaded, missing)
+                // Storage isn't switched on yet: keep the files for later, but still report the missing ones.
+                UploadResult.NotConfigured -> uploadsPaused = true
+            }
+        }
+        if (toReport.isNotEmpty()) {
+            val notSynced = try {
+                uploader.reportMissing(toReport)
+            } catch (e: DeviceRevokedException) {
+                return SendResult.Revoked
+            } catch (e: Exception) {
+                return SendResult.Failed(e.message ?: "Could not report missing recordings")
+            }
+            for ((call, _) in toReport) {
+                if (call.deviceCallId in notSynced) continue
+                ledger.markRecording(call.deviceCallId, STATUS_MISSING, null, now())
+                onMissing(call)
+                missing++
             }
         }
         return SendResult.Done(uploaded, missing)

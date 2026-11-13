@@ -21,6 +21,7 @@ let app: ReturnType<typeof buildApp>;
 const cookies: Record<string, string> = {};
 const stored = new Map<string, number>();
 const store: RecordingStore = {
+  remove: async () => {},
   uploadUrl: async (key, contentType) => `https://storage.test/put/${key}?type=${encodeURIComponent(contentType)}`,
   playUrl: async (key) => `https://storage.test/get/${key}`,
   size: async (key) => stored.get(key) ?? null,

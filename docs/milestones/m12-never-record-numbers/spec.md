@@ -1,6 +1,6 @@
 # M12. Numbers that are never recorded
 
-- Status: **Design not started.** Asked by the client on 12 November 2026. The order the owner set: approve the design, write the spec, finish the design, then build.
+- Status: **Built 13 November 2026** on the owner's go-ahead ("before they update lets even build whitelisting"), with the defaults below for N1 to N4. Server live; app part in 0.5.2.
 - Owner: unassigned
 - Starts after: none
 - External prerequisites: none
@@ -48,10 +48,18 @@ Out: number ranges or prefixes (for example all of a hospital's lines); employee
 - `POST /device/v1/calls` refuses listed numbers with reason `never record`.
 - `GET, POST, DELETE /api/never-record-numbers` (super admin), with `deletePastCalls` on POST.
 
-## Open questions (default in brackets)
+## What was built (13 November 2026)
+
+- Migration 0009 `never_record_numbers`; `GET, POST, DELETE /api/never-record-numbers` (super admin, for the company picked in the panel's new company picker); `deletePastCalls` deletes the calls, their comments and their recordings in R2. The audit log keeps only the last four digits.
+- `GET /device/v1/config` returns `neverRecord` as SHA-256 hashes; `POST /device/v1/calls` refuses listed numbers (`never record`), so a phone that hasn't picked up the list yet can't store them.
+- App 0.5.2: drops listed numbers in the same step as the company-SIM check, and removes any already in its history when the list arrives. Phone and server hash the same normalised number (a test checks the exact hash).
+- Panel: Settings → **Never record these numbers**, shown only to the super admin.
+- Tests: `apps/server/test/m12.int.test.ts` (7), `NeverRecordTest` (3).
+
+## Open questions (built with the defaults in brackets; change on request)
 
 - N1. Only the super admin (ReapLift), or each company's admin too? [Super admin only, as the client asked.]
-- N2. One list per company, or one list for all companies, or both? [Per company, plus a ReapLift-wide list for numbers that should never be recorded anywhere.]
+- N2. One list per company, or one list for all companies, or both? [Per company; a ReapLift-wide list can be added if needed.]
 - N3. When a number is added, delete its past calls and recordings? [Offer the choice each time; not ticked by default.]
 - N4. Should the employee see anything for such a call in the app? [No: it's as if the call wasn't on the company SIM.]
 

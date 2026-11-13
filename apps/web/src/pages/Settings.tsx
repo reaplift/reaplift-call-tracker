@@ -1,5 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react';
+import type { NeverRecordNumber } from '@reaplift/calls-shared';
 import { api, ApiError, type ApiKey } from '../api';
+import { formatNumber } from '../format';
 
 interface Item {
   id: string;
@@ -11,7 +13,7 @@ interface Item {
  * Company settings for the after-call form: call outcomes (M4) and ready-made notes (the pop-up). Phones pick up
  * changes on their next sync. An item in use is switched off rather than deleted, so old calls keep their outcome.
  */
-export function Settings() {
+export function Settings({ isSuperAdmin = false }: { isSuperAdmin?: boolean }) {
   return (
     <section>
       <h1>Settings</h1>
@@ -32,6 +34,7 @@ export function Settings() {
         rename={(id, text) => api.updateNoteTemplate(id, { text })}
         toggle={(id, active) => api.updateNoteTemplate(id, { active })}
       />
+      {isSuperAdmin && <NeverRecord />}
       <ApiKeys />
     </section>
   );
@@ -225,6 +228,108 @@ function ApiKeys() {
         </label>
         <button type="submit" disabled={!name.trim()}>
           Create key
+        </button>
+      </form>
+    </div>
+  );
+}
+
+/**
+ * M12 (super admin only): numbers whose calls are never recorded or kept. Phones drop these calls like personal-SIM
+ * calls, and the server refuses any that still arrive.
+ */
+function NeverRecord() {
+  const [items, setItems] = useState<NeverRecordNumber[]>([]);
+  const [number, setNumber] = useState('');
+  const [label, setLabel] = useState('');
+  const [deletePast, setDeletePast] = useState(false);
+  const [message, setMessage] = useState('');
+  const [error, setError] = useState('');
+
+  const reload = () => api.neverRecord().then((r) => setItems(r.items), (err) => setError(err instanceof ApiError ? err.message : 'Server unreachable'));
+  useEffect(() => {
+    reload();
+  }, []);
+
+  const run = async (work: () => Promise<unknown>) => {
+    setError('');
+    setMessage('');
+    try {
+      await work();
+      await reload();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Server unreachable');
+    }
+  };
+
+  const onAdd = (e: FormEvent) => {
+    e.preventDefault();
+    if (!number.trim()) return;
+    if (deletePast && !window.confirm('Delete every past call with this number, with its comments and recordings? This cannot be undone.')) return;
+    run(async () => {
+      const r = await api.addNeverRecord({ number: number.trim(), label: label.trim() || undefined, deletePastCalls: deletePast });
+      setMessage(
+        deletePast
+          ? `Added. Deleted ${r.deletedCalls} past call${r.deletedCalls === 1 ? '' : 's'} and ${r.deletedRecordings} recording${r.deletedRecordings === 1 ? '' : 's'}.`
+          : 'Added. New calls with this number will not be recorded.',
+      );
+      setNumber('');
+      setLabel('');
+      setDeletePast(false);
+    });
+  };
+
+  return (
+    <div className="card">
+      <h2>Never record these numbers</h2>
+      <p className="muted">
+        Calls to or from these numbers are dropped on the employee's phone and never stored, recorded or shown, as with
+        personal-SIM calls. Phones pick up changes within 30 minutes; the server refuses these calls straight away. Only
+        the super admin sees this list.
+      </p>
+      {error && <p className="error" role="alert">{error}</p>}
+      {message && <p className="notice" role="status">{message}</p>}
+      {items.length > 0 && (
+        <table>
+          <thead>
+            <tr>
+              <th>Number</th>
+              <th>Label</th>
+              <th>Added</th>
+              <th />
+            </tr>
+          </thead>
+          <tbody>
+            {items.map((n) => (
+              <tr key={n.number}>
+                <td>{formatNumber(n.number)}</td>
+                <td>{n.label}</td>
+                <td>{when(n.createdAt)}</td>
+                <td style={{ textAlign: 'right' }}>
+                  <button className="secondary" onClick={() => run(() => api.removeNeverRecord(n.number))}>
+                    Remove
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+      <form onSubmit={onAdd} className="filters" style={{ marginTop: 12 }}>
+        <label>
+          Number
+          <input value={number} onChange={(e) => setNumber(e.target.value)} placeholder="98111 00000" inputMode="tel" maxLength={30} />
+        </label>
+        <label>
+          Label
+          <input value={label} onChange={(e) => setLabel(e.target.value)} placeholder="Director" maxLength={100} />
+        </label>
+        <label className="check">
+          <input type="checkbox" checked={deletePast} onChange={(e) => setDeletePast(e.target.checked)} />
+          Also delete past calls and recordings with this number
+        </label>
+        <button type="submit" disabled={!number.trim()}>
+          Add number
         </button>
       </form>
     </div>

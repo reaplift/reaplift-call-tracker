@@ -69,13 +69,8 @@ class AndroidRecordingUploader(
         }
     }
 
-    override suspend fun reportMissing(call: OutgoingCall, reason: MissingReason): UploadResult =
-        try {
-            api.recordingMissing(call.deviceCallId, reason)
-            UploadResult.Done
-        } catch (e: ApiException) {
-            mapped(e) ?: throw e
-        }
+    override suspend fun reportMissing(calls: List<Pair<OutgoingCall, MissingReason>>): Set<String> =
+        api.recordingsMissing(calls.map { (call, reason) -> call.deviceCallId to reason })
 
     private fun mapped(e: ApiException): UploadResult? = when (e.code) {
         "RECORDING_EXISTS" -> UploadResult.AlreadyThere

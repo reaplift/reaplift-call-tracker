@@ -1,4 +1,4 @@
-import type { CallOutcome, CallRow, DashboardResponse, Employee, NoteTemplate, Page, PairingCodeResponse, RecordingPlayResponse } from '@reaplift/calls-shared';
+import type { CallOutcome, CallRow, Company, DashboardResponse, Employee, NeverRecordNumber, NoteTemplate, Page, PairingCodeResponse, RecordingPlayResponse } from '@reaplift/calls-shared';
 
 export interface User {
   id: string;
@@ -101,6 +101,14 @@ export const api = {
   apiKeys: () => request<{ items: ApiKey[] }>('GET', '/api/integrations/api-keys'),
   createApiKey: (name: string) => request<ApiKey & { key: string }>('POST', '/api/integrations/api-keys', { name }),
   revokeApiKey: (id: string) => request<void>('DELETE', `/api/integrations/api-keys/${id}`),
+  /** Super admin: every company, and the one to work in (P1). */
+  companies: () => request<{ items: Company[] }>('GET', '/api/companies'),
+  selectCompany: (companyId: number) => request<{ user: User }>('PUT', '/api/auth/company', { companyId }),
+  /** M12, super admin: numbers whose calls are never recorded or kept. */
+  neverRecord: () => request<{ items: NeverRecordNumber[] }>('GET', '/api/never-record-numbers'),
+  addNeverRecord: (body: { number: string; label?: string; deletePastCalls?: boolean }) =>
+    request<{ number: string; deletedCalls: number; deletedRecordings: number }>('POST', '/api/never-record-numbers', body),
+  removeNeverRecord: (number: string) => request<void>('DELETE', `/api/never-record-numbers/${encodeURIComponent(number)}`),
   /** Today, yesterday, the last 7 days and this month (M2 task 2.7). */
   dashboard: () => request<DashboardResponse>('GET', '/api/reports/dashboard'),
   reportSummary: (q: CallQuery) => request<ReportSummary>('GET', `/api/reports/summary?${callQueryString(q)}`),

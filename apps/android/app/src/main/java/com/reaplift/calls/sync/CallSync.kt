@@ -117,11 +117,13 @@ class CallSync(
      * Moves new call log rows into the outbox. Returns the highest row ID looked at, including rows it
      * skipped (personal SIM), so they are never read again.
      */
-    fun collect(afterId: Long, sinceMs: Long, matcher: CompanySimMatcher): Long {
+    fun collect(afterId: Long, sinceMs: Long, matcher: CompanySimMatcher, neverRecord: NeverRecordList = NeverRecordList.EMPTY): Long {
         var last = afterId
         for (row in source.rowsAfter(afterId, sinceMs)) {
             last = maxOf(last, row.id)
             if (!matcher.isCompany(row.phoneAccountId)) continue
+            // M12: the super admin's never-record numbers are dropped here too, before anything is stored.
+            if (neverRecord.contains(row.number)) continue
             val type = CallTypes.map(row.type) ?: continue
             val ends = callEnds.between(row.dateMs, row.dateMs + row.durationSeconds * 1000 + MAX_RING_MS)
             val ring = ringSeconds(row.dateMs, row.durationSeconds, ends)

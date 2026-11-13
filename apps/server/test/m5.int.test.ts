@@ -22,6 +22,7 @@ let db: Kysely<Database>;
 let app: ReturnType<typeof buildApp>;
 const cookies: Record<string, string> = {};
 const store: RecordingStore = {
+  remove: async () => {},
   uploadUrl: async (key) => `https://storage.test/put/${key}`,
   playUrl: async (key, seconds) => `https://storage.test/get/${key}?expires=${seconds}`,
   size: async () => 1_000_000,

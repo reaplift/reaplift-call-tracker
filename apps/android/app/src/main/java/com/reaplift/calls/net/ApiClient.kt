@@ -60,6 +60,8 @@ data class DeviceConfig(
     val settings: DeviceSettings,
     val outcomes: List<OutcomeJson> = emptyList(),
     val noteTemplates: List<String> = emptyList(),
+    /** M12: SHA-256 of each never-record number. */
+    val neverRecord: List<String> = emptyList(),
 )
 
 @Serializable
@@ -91,6 +93,12 @@ data class RecordingDiagnostics(
 
 @Serializable
 data class RecordingMissingRequest(val deviceCallId: String, val diagnostics: RecordingDiagnostics)
+
+@Serializable
+data class RecordingMissingBatch(val items: List<RecordingMissingRequest>)
+
+@Serializable
+data class RecordingMissingBatchResult(val saved: Int = 0, val notSynced: List<String> = emptyList())
 
 @Serializable
 data class CallJson(
@@ -172,9 +180,14 @@ class ApiClient(
         call("POST", "/device/v1/recordings/complete", json.encodeToString(RecordingCallRef(deviceCallId))) { }
     }
 
-    suspend fun recordingMissing(deviceCallId: String, reason: com.reaplift.calls.sync.MissingReason) {
-        val diagnostics = RecordingDiagnostics(reason.filesInWindow, reason.bestScore, reason.bestFolder, reason.bestAudioSeconds, reason.bestOffsetSeconds)
-        call("POST", "/device/v1/recordings/missing", json.encodeToString(RecordingMissingRequest(deviceCallId, diagnostics))) { }
+    /** Up to 50 missing recordings in one request (0.5.2); returns the calls the server doesn't have yet. */
+    suspend fun recordingsMissing(items: List<Pair<String, com.reaplift.calls.sync.MissingReason>>): Set<String> {
+        val body = RecordingMissingBatch(
+            items.map { (id, r) -> RecordingMissingRequest(id, RecordingDiagnostics(r.filesInWindow, r.bestScore, r.bestFolder, r.bestAudioSeconds, r.bestOffsetSeconds)) },
+        )
+        return call("POST", "/device/v1/recordings/missing", json.encodeToString(body)) {
+            json.decodeFromString<RecordingMissingBatchResult>(it).notSynced.toSet()
+        }
     }
 
     suspend fun config(): DeviceConfig = call("GET", "/device/v1/config", null) { json.decodeFromString(it) }

@@ -137,6 +137,7 @@ An employee has at most one active device; pairing a new phone revokes the old o
 
 | Table | Columns | Milestone |
 | --- | --- | --- |
+| `never_record_numbers` | `company_id`, `number`, `label`, `created_by`, `created_at`; primary key (`company_id`, `number`). Built 13 November 2026 (migration 0009, M12) | M12 |
 | `api_keys` | `id`, `company_id`, `name`, `key_prefix`, `key_hash unique` (SHA-256), `created_by`, `created_at`, `last_used_at`, `revoked_at`. Built 12 November 2026 (migration 0007) | M5 |
 | `webhooks` | `id`, `url`, `secret_encrypted`, `events text[]`, `enabled`, `created_at` | M5 |
 | `webhook_deliveries` | `id bigint`, `webhook_id`, `event`, `payload jsonb`, `status`, `attempts`, `next_attempt_at`, `last_status_code`, `created_at` | M5 |
@@ -184,6 +185,7 @@ An employee has at most one active device; pairing a new phone revokes the old o
 | GET, POST, DELETE | `/api/teams`, `/api/excluded-numbers`, `/api/users` | admin | M2 |
 | GET | `/api/devices` (health list) | admin, manager | M4 |
 | POST | `/api/app-releases` | admin | M4 |
+| GET, POST, DELETE | `/api/never-record-numbers` (`POST { number, label?, deletePastCalls? }`; super admin only). Built 13 November 2026 | super admin | M12 |
 | GET, POST, DELETE | `/api/integrations/api-keys` (built 12 November 2026; the key is returned once, from POST), `/api/integrations/webhooks` | admin | M5 |
 | GET | `/api/calls/:id/recording` (returns a 5-minute play link; 410 `RECORDING_EXPIRED` after 365 days, D4). Built 11 November 2026 | admin, manager | M6 |
 
@@ -193,14 +195,14 @@ An employee has at most one active device; pairing a new phone revokes the old o
 | --- | --- | --- | --- |
 | POST | `/device/v1/pair` | Body: `{ code, brand, model, androidVersion, sdkInt, appVersion, defaultDialer, simSlot, simCarrier, phoneAccountId, consentVersion }`. No token needed. Returns `{ deviceToken, employee: { name, companyNumber }, settings }` | M1 |
 | POST | `/device/v1/calls` | Batch of up to 200 calls. Returns `{ accepted, duplicates }`. Idempotent on (`device`, `deviceCallId`) | M1 |
-| GET | `/device/v1/config` | Settings, the company's active outcomes for the after-call form (built 11 November 2026), latest app version | M1 (outcomes and version from M4) |
+| GET | `/device/v1/config` | Settings, the company's active outcomes and ready-made notes, and `neverRecord` (SHA-256 of each never-record number, M12). The app fetches it at most every 30 minutes | M1 (outcomes M4, neverRecord M12) |
 | POST | `/device/v1/checkin` | Health snapshot | M4 |
 | PATCH | `/device/v1/calls/:deviceCallId/comment` | After-call form `{ outcomeId, note, followUpAt }` (any may be null, but not both outcome and note). 404 `CALL_NOT_SYNCED` until the call has arrived; the phone keeps the comment and retries. Built 11 November 2026 | M4 |
 | POST | `/device/v1/call-requests` | Record that the app is about to place a call | M9 |
 | GET | `/device/v1/leads` | The employee's CRM leads to call | M9 |
 | POST | `/device/v1/recordings/upload-url` | `{ deviceCallId, sizeBytes, mimeType, audioSeconds, matchScore }` → `{ uploadUrl, expiresAt, headers }`; a 15-minute signed PUT link straight to R2. 503 `RECORDINGS_NOT_CONFIGURED` until R2 is set; 409 `RECORDING_EXISTS` | M6 (built) |
 | POST | `/device/v1/recordings/complete` | Confirms the upload; the server checks the object's size in R2 (400 `UPLOAD_NOT_FOUND` if absent) | M6 (built) |
-| POST | `/device/v1/recordings/missing` | Marks a call's recording missing; never overwrites an upload | M6 (built) |
+| POST | `/device/v1/recordings/missing` | Marks recordings missing, with the reason (files in the window, best score, folder; never a file name). App 0.5.2 sends `{ items }`, up to 50, and gets `{ saved, notSynced }`; older apps send one call. Never overwrites an upload | M6 (built) |
 
 A revoked device gets 401 `DEVICE_REVOKED` and the app stops syncing and shows "This phone was unpaired".
 
@@ -246,4 +248,4 @@ Still planned for M5: employee push from the CRM (5.3) and webhooks `call.synced
 | `OUTCOME_EXISTS` | 409 | An outcome with that label already exists in the company (M4) |
 | `CONSENT_REQUIRED` | 403 | Device syncing without consent to the company's current consent text (P1.8) |
 | `LOGIN_LOCKED` | 423 | Too many wrong passwords |
-| `RATE_LIMITED` | 429 | CRM API over its limit |
+| `RATE_LIMITED` | 429 | CRM API over 5 requests a second per key; a phone over 120 requests a minute (`Retry-After: 60`) |

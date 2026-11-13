@@ -173,7 +173,25 @@ export interface DeviceConfig {
   settings: DeviceSettings;
   outcomes: Array<{ id: string; label: string }>;
   noteTemplates: string[];
+  /** M12: SHA-256 (hex) of each never-record number, digits with country code ("919811100000"). Never the number. */
+  neverRecord: string[];
 }
+
+/** M12: a number whose calls are never recorded or kept (super admin only). */
+export interface NeverRecordNumber {
+  number: string;
+  label: string | null;
+  createdAt: string;
+}
+
+export const NeverRecordInput = z
+  .object({
+    number: z.string().min(3).max(30),
+    label: z.string().trim().max(100).optional(),
+    /** Also delete calls with this number already stored, with their comments and recordings. */
+    deletePastCalls: z.boolean().optional(),
+  })
+  .strict();
 
 export interface NoteTemplate {
   id: string;
@@ -242,7 +260,8 @@ export interface RecordingUploadResponse {
 
 export const RecordingCallRef = z.object({ deviceCallId: z.string().min(1).max(64) }).strict();
 
-/** Why the phone found no recording (app 0.5.1). Older apps send only `deviceCallId`. Never a file name. */
+/** Why the phone found no recording (app 0.5.1). Older apps send only `deviceCallId`. Never a file name.
+ * App 0.5.2 sends up to 50 at once as `{ items: [...] }`, so a phone makes one request, not one per call. */
 export const RecordingMissing = z
   .object({
     deviceCallId: z.string().min(1).max(64),
@@ -258,6 +277,14 @@ export const RecordingMissing = z
       .optional(),
   })
   .strict();
+
+export const RecordingMissingBatch = z.object({ items: z.array(RecordingMissing).min(1).max(50) }).strict();
+
+export interface RecordingMissingBatchResult {
+  saved: number;
+  /** Calls the server doesn't have yet; the phone tries again later. */
+  notSynced: string[];
+}
 
 export interface RecordingPlayResponse {
   url: string;

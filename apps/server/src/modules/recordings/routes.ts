@@ -1,8 +1,11 @@
 import type { FastifyInstance } from 'fastify';
 import { sql, type Kysely } from 'kysely';
+import type { z } from 'zod';
 import {
   RecordingCallRef,
   RecordingMissing,
+  RecordingMissingBatch,
+  type RecordingMissingBatchResult,
   RecordingUploadRequest,
   type RecordingPlayResponse,
   type RecordingUploadResponse,
@@ -92,17 +95,14 @@ export function registerRecordingRoutes(
     return reply.code(204).send();
   });
 
-  /** No file matched this call: the panel flags it (HLD 8.6). An upload that already arrived is kept. */
-  app.post('/device/v1/recordings/missing', async (req, reply) => {
-    const parsed = RecordingMissing.safeParse(req.body);
-    if (!parsed.success) return sendError(reply, 400, 'INVALID_REQUEST', 'Send { deviceCallId, diagnostics? }');
-    const d = parsed.data.diagnostics;
+  /** Saves one missing report; false when the call hasn't reached the server yet. An arrived upload is kept. */
+  const saveMissing = async (deviceId: string, item: z.infer<typeof RecordingMissing>): Promise<boolean> => {
+    const call = await ownCall(deviceId, item.deviceCallId);
+    if (!call) return false;
+    if (call.status === 'uploaded') return true;
+    const d = item.diagnostics;
     // A folder named after a client must not be stored: long digit runs go, as the phone already does.
     const folder = d?.bestFolder ? d.bestFolder.replace(/\d{5,}/g, '#') : null;
-    const device = req.device!;
-    const call = await ownCall(device.deviceId, parsed.data.deviceCallId);
-    if (!call) return sendError(reply, 404, 'CALL_NOT_SYNCED', 'This call has not reached the server yet');
-    if (call.status === 'uploaded') return reply.code(204).send();
     await sql`
       insert into recordings (company_id, call_id, status, reported_at, files_in_window, best_score, best_folder, best_audio_seconds, best_offset_seconds)
       values (${call.company_id}, ${call.id}, 'missing', ${now()}, ${d?.filesInWindow ?? null}, ${d?.bestScore ?? null}, ${folder},
@@ -111,6 +111,27 @@ export function registerRecordingRoutes(
         files_in_window = values(files_in_window), best_score = values(best_score), best_folder = values(best_folder),
         best_audio_seconds = values(best_audio_seconds), best_offset_seconds = values(best_offset_seconds)
     `.execute(db);
+    return true;
+  };
+
+  /**
+   * No file matched these calls: the panel flags them (HLD 8.6). App 0.5.2 sends up to 50 as `{ items }` in one
+   * request; older apps send one call at a time.
+   */
+  app.post('/device/v1/recordings/missing', async (req, reply) => {
+    const device = req.device!;
+    const batch = RecordingMissingBatch.safeParse(req.body);
+    if (batch.success) {
+      const result: RecordingMissingBatchResult = { saved: 0, notSynced: [] };
+      for (const item of batch.data.items) {
+        if (await saveMissing(device.deviceId, item)) result.saved += 1;
+        else result.notSynced.push(item.deviceCallId);
+      }
+      return reply.code(200).send(result);
+    }
+    const parsed = RecordingMissing.safeParse(req.body);
+    if (!parsed.success) return sendError(reply, 400, 'INVALID_REQUEST', 'Send { deviceCallId, diagnostics? } or { items: [...] }');
+    if (!(await saveMissing(device.deviceId, parsed.data))) return sendError(reply, 404, 'CALL_NOT_SYNCED', 'This call has not reached the server yet');
     return reply.code(204).send();
   });
 

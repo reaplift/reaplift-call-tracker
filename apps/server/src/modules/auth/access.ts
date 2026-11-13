@@ -64,13 +64,23 @@ export function classifyRoute(url: string): RouteKind {
 /** data-model-and-api.md: 5 requests a second per key (Callyzer allows one every 2 seconds). */
 export const CRM_API_PER_SECOND = 5;
 
-/** Requests per key in the last second, kept in memory: the app runs as one process (D10). */
+/**
+ * Phones: at most this many requests a minute each. A normal sync makes a handful (calls in batches of 200, missing
+ * recordings in batches of 50, settings at most every 30 minutes); this only stops a phone stuck in a loop from
+ * tiring the shared hosting. The phone keeps everything and tries again later.
+ */
+export const DEVICE_PER_MINUTE = 120;
+
+/** Requests per key in a sliding window, kept in memory: the app runs as one process (D10). */
 export class RateLimiter {
   private hits = new Map<string, number[]>();
-  constructor(private perSecond: number) {}
+  constructor(
+    private max: number,
+    private windowMs = 1000,
+  ) {}
   allow(key: string, nowMs: number): boolean {
-    const recent = (this.hits.get(key) ?? []).filter((t) => nowMs - t < 1000);
-    if (recent.length >= this.perSecond) {
+    const recent = (this.hits.get(key) ?? []).filter((t) => nowMs - t < this.windowMs);
+    if (recent.length >= this.max) {
       this.hits.set(key, recent);
       return false;
     }
@@ -95,6 +105,7 @@ export function registerAccess(
 ) {
   const { db, now, panelOrigin } = deps;
   const rateLimiter = new RateLimiter(CRM_API_PER_SECOND);
+  const deviceLimiter = new RateLimiter(DEVICE_PER_MINUTE, 60_000);
 
   app.addHook('onRequest', async (req, reply) => {
     const url = req.routeOptions.url;
@@ -136,6 +147,10 @@ export function registerAccess(
       if (device.revoked_at) return sendError(reply, 401, 'DEVICE_REVOKED', 'This phone was unpaired');
       if (device.company_status !== 'active')
         return sendError(reply, 403, 'COMPANY_SUSPENDED', 'Your company is suspended; tracking is paused');
+      if (!deviceLimiter.allow(device.id, now().getTime())) {
+        reply.header('retry-after', '60');
+        return sendError(reply, 429, 'RATE_LIMITED', 'Too many requests from this phone; it will try again shortly');
+      }
       req.device = {
         deviceId: device.id,
         employeeId: device.employee_id,

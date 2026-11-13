@@ -123,6 +123,12 @@ td.actions { display: flex; gap: 6px; flex-wrap: wrap; }
 .tile.out span { color: var(--out); }
 .tile.bad span { color: var(--error); }
 
+/* Super admin's company picker (P1) and checkbox labels */
+.company-picker { margin: 0 8px 14px; }
+.company-picker select { width: 100%; }
+label.check { flex-direction: row; align-items: center; gap: 8px; color: var(--text); }
+label.check input { width: 16px; height: 16px; accent-color: var(--brand); }
+
 /* Narrow screens: the sidebar becomes a bar across the top, as the CRM hides its sidebar below 1200px. */
 @media (max-width: 900px) {
   .shell { grid-template-columns: minmax(0, 1fr); gap: 12px; padding: 12px; }
