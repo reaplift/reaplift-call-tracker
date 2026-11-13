@@ -1,6 +1,6 @@
 # M10. WhatsApp message templates
 
-- Status: **Design, waiting for approval.** Nothing built. The order the owner set on 12 November 2026 is: approve the design, write this spec, finish the design, then build.
+- Status: **Design approved in part (12 November 2026):** the client answered W1 to W5; W6 asked again. Nothing built. The order the owner set on 12 November 2026 is: approve the design, write this spec, finish the design, then build.
 - Owner: unassigned
 - Starts after: M4 task 4.5 (after-call pop-up and call history screen, built in app 0.5.0)
 - External prerequisites: E1 (test phones with WhatsApp or WhatsApp Business installed)
@@ -8,7 +8,7 @@
 
 ## Outcome
 
-A company's admin writes a few fixed WhatsApp messages in the panel, for example "Welcome", "Follow-up" and "Not interested, but keep in touch". After a call, or from the app's call history, the employee taps **WhatsApp**, picks one, and sees the message with the client's name already filled in. If the phone doesn't have a name for the number, the app asks the employee to type one. The employee checks the message and taps **Send**. WhatsApp opens on the client's chat with the text ready, and the employee presses WhatsApp's own send button. The panel shows which template was sent to which client, by whom and when.
+ReapLift's super admin writes a few fixed WhatsApp messages for each company in the panel, for example "Welcome", "Follow-up" and "Not interested, but keep in touch". After a call, or from the app's call history, the employee taps **WhatsApp**, picks one, and sees the message with the client's name already filled in. If the phone doesn't have a name for the number, the app asks the employee to type one. The employee checks the message and taps **Send**. WhatsApp opens on the client's chat with the text ready, and the employee presses WhatsApp's own send button. The panel shows which template was sent to which client, by whom and when.
 
 ## Design (to approve)
 
@@ -27,7 +27,9 @@ The alternative is the **WhatsApp Business Cloud API**, which sends from one com
 | `{{company_name}}` | The company's name in Callit | Always present |
 | `{{follow_up_date}}` | The follow-up date chosen in the after-call form, as "13 Nov" | The employee picks or types it |
 
-The employee can't change the template's own words, only the values that fill the placeholders. That keeps the wording the company approved (the client asked for "fixed templates").
+**Custom blanks (client, W5):** the super admin can put any other blank in a template, for example `{{product}}`, `{{site_name}}` or `{{price}}`. The app shows a box for each one, labelled from the blank's name ("Product", "Site name", "Price"), and the employee must fill it before sending. Only the four blanks above are filled automatically.
+
+The employee can't change the template's own words, only fill the blanks. A blank the app can't fill (for example the name of a new client whose number isn't saved) must be filled by the employee. That keeps the wording the super admin wrote (the client asked for "fixed templates").
 
 **Where the employee finds it:**
 1. The after-call pop-up's **WhatsApp** button (which today opens a blank chat) opens the template list.
@@ -37,7 +39,7 @@ The employee can't change the template's own words, only the values that fill th
 **Steps in the app:** pick template → fill the missing values (the name is pre-filled when known) → review the full message → **Send on WhatsApp** → WhatsApp opens with the text → the employee presses send in WhatsApp → back in Callit, the send is saved on the phone and uploaded with the next sync (it works offline, like comments).
 
 **Panel:**
-- **Settings → WhatsApp message templates:** list (title, text, on/off, last changed), add and edit with buttons that insert each placeholder, and a live preview with sample values.
+- **Settings → WhatsApp message templates (super admin, for the company picked):** list (title, text, on/off, last changed), add and edit with buttons that insert each automatic blank, a way to add a custom blank, and a live preview with sample values. Company admins and managers see the list but can't change it.
 - **Call history:** a "WhatsApp" mark on the call with the template's title, and the message in the call's details.
 
 ## Flow diagram
@@ -109,25 +111,28 @@ Each task ships with its tests: placeholder filling (missing values, braces in t
 - Migration `message_sends`: `id`, `company_id`, `employee_id`, `device_id`, `device_send_id` (unique with device, so a retry is not saved twice), `template_id null`, `number`, `call_id null`, `body` (the text as sent), `app` (`whatsapp` or `whatsapp_business`), `opened_at`, `synced_at`.
 - `GET /device/v1/config` adds `messageTemplates: [{ id, title, body }]`.
 - `POST /device/v1/message-sends`: a batch from the phone's outbox; `{ accepted, duplicates }`.
-- `GET, POST, PATCH /api/message-templates` (admin; super admin for the company picked).
+- `GET /api/message-templates` (admin, manager: read only); `POST, PATCH /api/message-templates` (super admin, for the company picked).
 - `GET /api/calls` adds `whatsapp: [{ templateTitle, sentAt }]`.
-- Error codes: `TEMPLATE_EXISTS` (409), `TEMPLATE_PLACEHOLDER_UNKNOWN` (400, for example `{{nmae}}`).
+- Error codes: `TEMPLATE_EXISTS` (409), `TEMPLATE_BLANK_INVALID` (400: a blank name must be letters, digits and underscores, for example `{{site_name}}`).
 
-## Open questions (default in brackets; the owner and the client decide)
+## Decisions (client, 12 November 2026)
 
-- **W1. Who writes templates?** The client wrote "super admin". In Callit, "super admin" is ReapLift, and each company has its own admins. [Company admins write their company's templates; ReapLift's super admin can do it for any company. Employees can't.]
-- **W2. Send from the employee's WhatsApp, or a central number through Meta's API?** [Employee's WhatsApp, as above.]
-- **W3. Which WhatsApp?** Must employees use WhatsApp Business registered on the company SIM, so clients see the company number? [Use WhatsApp Business when installed, otherwise WhatsApp. The company tells employees which one to use.]
-- **W4. Can the employee change the wording, or only the placeholders?** [Only the placeholders.]
-- **W5. Other placeholders the client needs** (for example product, site name, price)? [Only the four above in the first version.]
-- **W6. Starter templates for every company?** Callyzer starts with Welcome, Follow-up and "Not interested (but keep in touch)". [Yes, those three, editable.]
+| | Question | Decision |
+| --- | --- | --- |
+| W1 | Who writes templates? | **The super admin** (ReapLift), for each company. Company admins and employees can't change them |
+| W2 | Employee's WhatsApp or a central number through Meta's API? | **The employee's WhatsApp** |
+| W3 | Must employees use WhatsApp Business on the company SIM? | **Not required for now.** The app opens WhatsApp Business if installed, otherwise WhatsApp |
+| W4 | Can the employee change the wording? | **No, only fill the blanks.** Blanks the app can't fill (for example a new client's name) the employee must fill |
+| W5 | Other blanks? | **Any blank the super admin puts in a template** (product, site, price and so on); the employee fills them |
+| W6 | Should a new company start with three example templates (Welcome, Follow-up, Not interested) for the super admin to edit, as Callyzer does, or with an empty list? | **Asked again in plain words.** Default: start empty, since the super admin writes them |
 
 ## Demo (milestone acceptance)
 
 On a Vivo and a Tecno test phone, with WhatsApp Business installed:
-1. The admin adds "Follow-up" in Settings.
+1. The super admin adds "Follow-up" (with a custom blank `{{site_name}}`) in Settings for Country Roads.
 2. Within a sync, it appears in the app.
 3. After a company-SIM call to a saved contact, the employee sends it from the pop-up. The name and date are filled in, and WhatsApp opens with the exact text.
 4. A call to an unsaved number asks for the name first.
 5. With the phone offline, the send is kept and appears in the panel's call history after reconnecting.
-6. Another company's admin can't see the template or the send.
+6. Another company's admin can't see the template or the send, and Country Roads' own admin can see the template but not change it.
+7. A custom blank (Site name) must be filled before **Send on WhatsApp** is allowed.

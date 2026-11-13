@@ -46,12 +46,12 @@ Out: recording status (M6).
 | 4.2 | Health rules and the Phones page |
 | 4.3 | Health alert emails, deduplicated |
 | 4.4 | App releases: upload, `/device/v1/config` version, in-app update |
-| 4.5 | After-call form: outcome, comment, follow-up; needs-comment list and reminders |
+| 4.5 | After-call form: outcome, comment, follow-up; needs-comment list and reminders. **Built:** the form (app 0.3.0), comments on every call type, and the client's pop-up, ready-made notes, voice typing and call history screen (app 0.5.0, 12 November 2026). HLD 8.8 describes them |
 | 4.6 | Brand guides for any brand found in the phone survey |
 
 ## Data and API
 
-Migration: `device_checkins`, `app_releases`, `devices.last_checkin_at`, `calls.note`, `calls.outcome` (company-defined list, `call_outcomes` table with `company_id`), `calls.follow_up_at`, `calls.commented_at`. Settings: `CHECKIN_SILENT_MINUTES` (120).
+Built: migration 0004 (`call_outcomes`, `calls.outcome_id`, `follow_up_at`, `commented_at`) and 0006 (`note_templates`, ready-made notes per company); `PATCH /device/v1/calls/:deviceCallId/comment`; outcomes and notes in `GET /device/v1/config`; panel routes `/api/call-outcomes` and `/api/note-templates`. Planned: migration `device_checkins`, `app_releases`, `devices.last_checkin_at`, `calls.note`, `calls.outcome` (company-defined list, `call_outcomes` table with `company_id`), `calls.follow_up_at`, `calls.commented_at`. Settings: `CHECKIN_SILENT_MINUTES` (120).
 
 ## Open questions
 

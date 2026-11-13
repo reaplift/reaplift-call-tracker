@@ -38,3 +38,22 @@ Android 15 emulator (`calls35`, `sdk_gphone64_arm64`), app 0.4.0 (debug), local 
 - R2 itself (needs the four `S3_*` settings on the server, E6), including R2's lifecycle rules (Infrequent Access after 30 days, delete after 365).
 - Real dialers: where Vivo, Samsung and Oppo save, and whether their files are in the media index (T4); a dual-SIM phone's personal-SIM recordings must never be uploaded (they match no company-SIM call).
 - The panel's play button in a browser against R2 (the API and the downloaded bytes were checked).
+
+## Open issue: no recording uploads from the beta phones (found 13 November 2026)
+
+The client reported they can't see recordings in the panel, although Santhosh's phone records calls. Live database, read only (no numbers printed):
+
+| Employee | Phone | Android | App | Recording rows |
+| --- | --- | --- | --- | --- |
+| Santhosh | OPPO CPH2721 | 16 | 0.5.0 | 55, all `missing` |
+| Prathap | Samsung SM-J810G | 10 | 0.5.0 | 45, all `missing` |
+| Vishnu | VERTU VTL-202403 | 15 | 0.5.0 | 75, all `missing` |
+
+No `uploaded` row in any company, and no `recording.played` audit entries. The app only searches when it has audio permission, so permission was granted. For every call it either found no audio file in the call's time window, or none scored the 60 points needed (time saved, audio length, number or name in the file name, a call-recording folder). The emulator test passed with test files; real dialers differ.
+
+The `missing` report carries no reason, so the server can't tell which. Next:
+
+1. App 0.5.1 sends a short reason with each `missing` report: how many audio files were in the window, the best score, and that file's folder and length. It never sends file names, which contain clients' names and numbers.
+2. 0.5.1 looks again at calls of the last 3 days marked missing, once, so recordings found after the fix are uploaded.
+3. The client sends from Santhosh's phone: the dialer's recording setting, and the folder path of one call recording in the Files app, with the name blurred if it shows a number.
+4. Matching is tuned from that data, not guessed.

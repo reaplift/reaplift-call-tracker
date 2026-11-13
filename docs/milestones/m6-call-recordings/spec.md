@@ -38,7 +38,7 @@ Ravi's Vivo saves recordings to the folder found in T4, named with the number an
 
 ## Scope
 
-In: the recordings setup step and dialer check, `MANAGE_EXTERNAL_STORAGE`, per-brand folder and file-name rules (from T4), matching, upload links and resumable upload, MinIO in `compose.dev.yml`, recording status per call (▶ ⏳ ❌ —), the missing-recording notification and Phones page status, coverage (recorded ÷ expected) on the Reports page and in the daily email, the player with audited plays, retention by a storage lifecycle rule (D4), the `/v1` recording link and the two webhook events.
+In: the recordings setup step and dialer check, finding the recording through Android's media index (`READ_MEDIA_AUDIO`; built 11 November 2026, replacing `MANAGE_EXTERNAL_STORAGE`, which stays a fallback), per-brand file-name rules (from T4), matching, upload links straight to Cloudflare R2, SeaweedFS in `compose.dev.yml` locally (MinIO's images are no longer published), recording status per call (▶ ⏳ ❌ —), the missing-recording notification and Phones page status, coverage (recorded ÷ expected) on the Reports page and in the daily email, the player with audited plays, retention by a storage lifecycle rule (D4), the `/v1` recording link and the two webhook events.
 
 Out: recording through a calling provider; transcription.
 
@@ -47,7 +47,7 @@ Out: recording through a calling provider; transcription.
 | Task | Name |
 | --- | --- |
 | 6.1 | Test-phone research: answer T4 to T6 for Samsung, Oppo (own dialer and ODialer), Vivo, and the Google dialer |
-| 6.2 | Object storage: MinIO locally, R2 or S3 settings (D6), private bucket, lifecycle rule |
+| 6.2 | Object storage: SeaweedFS locally, Cloudflare R2 in production (D6, live 12 November 2026), private bucket, lifecycle rule: Infrequent Access after 30 days, deleted after 365 (D4; the owner confirms the rule in Cloudflare's dashboard) |
 | 6.3 | Server: upload link, complete, missing; `recordings` table; play link |
 | 6.4 | App: folder access, matching, upload queue |
 | 6.5 | App: setup step, dialer check, test call with recording, missing notification |

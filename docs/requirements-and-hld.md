@@ -69,6 +69,14 @@ Decision D14 (owner, 11 November 2026) replaces the earlier rule that a call als
 - Operational visibility for silent or unhealthy phones, including auto-update and bad-battery symptoms, so managers know when a phone stopped reporting data.
 - Recording coverage and playback views for company-SIM calls.
 
+### Added by the client, 12 November 2026
+
+- A Callyzer-compatible API for each company's own CRM (M5, built).
+- A dashboard as the panel's first page: Today, Yesterday, Last 7 days, This month (M2 task 2.7, built).
+- WhatsApp message templates (M10, design).
+- The panel and app in the CRM's colours, fonts and icons (M11, design not started).
+- A super admin list of numbers that are never recorded or stored (M12, design not started).
+
 ### Later, not planned
 
 - Click-to-call from the CRM's web page. (Calling from the app is now planned as M9, owner, 11 November 2026: the app starts the call and the phone's own dialer places and records it.)
@@ -174,9 +182,9 @@ The app checks our server for a newer version on start and daily, downloads it, 
 ### 8.6 Recording sync (M6)
 
 1. The employee turns on auto-record in the dialer (guided per brand). The wizard checks the default dialer and refuses the Google dialer, with the steps to switch.
-2. After each connected company-SIM call, the app looks in the dialer's recordings folder for a file saved within a few minutes of the call ending.
+2. After each connected company-SIM call, the app asks Android's media index (MediaStore, `READ_MEDIA_AUDIO`) for audio files saved between a minute before the call started and 10 minutes after it ended. It does not browse folders. All-files access stays a fallback for a brand whose dialer saves where the media index can't see (built 11 November 2026; confirmed per brand on real phones).
 3. Each candidate is scored on save time against call end, audio length against talk time, and the number or contact name in the file name. The best match above a threshold is linked to the call.
-4. The app asks the server for a one-time upload link and uploads the file straight to object storage, resuming after interruptions. The phone keeps its own copy.
+4. The app asks the server for a 15-minute upload link and uploads the file straight to Cloudflare R2; the audio never passes through our server, and the database keeps only the file's key and details. The phone keeps its own copy. The panel plays a recording through a 5-minute link, and every play is audited. R2 moves files to Infrequent Access after 30 days and deletes them after 365 (D4).
 5. No match within 10 minutes for a connected call of 5 seconds or more: the call is marked **recording missing**, the employee is told, and after 3 in a row the phone's status becomes **Recording off** on the dashboard.
 
 Files that match no company-SIM call are never opened or uploaded.
@@ -191,9 +199,22 @@ Files that match no company-SIM call are never opened or uploaded.
 | `RECEIVE_BOOT_COMPLETED` | Restart after a reboot | M1 |
 | `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS` | Ask to be left running | M1 |
 | `REQUEST_INSTALL_PACKAGES` | Install its own updates | M4 |
-| `MANAGE_EXTERNAL_STORAGE` (Android 11+), `READ_EXTERNAL_STORAGE` (older) | Read the dialer's recordings folder | M6 |
+| `READ_MEDIA_AUDIO` (Android 13+), `READ_EXTERNAL_STORAGE` (Android 12 and older) | Find the dialer's recording of a company-SIM call through the media index | M6 (built) |
+| `SYSTEM_ALERT_WINDOW` ("Display over other apps") | Open the after-call pop-up over other apps when a call ends; without it the notification stays | M4 task 4.5 (built, app 0.5.0) |
+| `MANAGE_EXTERNAL_STORAGE` | Fallback only, for a dialer the media index can't see | M6, if a brand needs it |
 
 No contacts permission: the call log already carries the cached contact name.
+
+### 8.8 After-call pop-up and call history screen (M4 task 4.5, built in app 0.5.0)
+
+- **Pop-up:** when a company-SIM call ends, the app opens "Last call details" over whatever is on screen. It shows the number or contact, type, time, talk and ringing time, Call and WhatsApp buttons, the company's outcomes, a note with ready-made notes ("/" or a chip) and voice typing, and a follow-up date (Tomorrow, In 3 days, Next week, or a date). Buttons: Save & exit, Save & call again (opens the dialer), Later. It stays invisible, and lets taps through, until the app has confirmed the call was on the company SIM, so a personal-SIM call never shows it. Without "Display over other apps", a notification asks for the comment instead.
+- **Saved offline:** a comment is saved on the phone at once and sent with the next sync. If the call hasn't reached the server yet (`CALL_NOT_SYNCED`), the phone keeps it and retries. Every call type can get a comment, missed and rejected included.
+- **Call history screen:** the app opens on it. Tabs All, Incoming, Outgoing, Missed; search; calls grouped by day; each card with Call, WhatsApp, ▶ Play when a recording was uploaded, and "Tap here to add notes". It shows company-SIM calls only.
+- **Panel:** each company's admin manages the outcomes and ready-made notes in Settings; phones pick up changes on their next sync.
+
+### 8.9 WhatsApp message templates (M10, design approved in part; not built)
+
+The super admin writes fixed templates with blanks. After a call, the employee picks one; the app fills what it knows (client name from the contact, employee and company name, follow-up date) and asks the employee for the rest; the employee reviews it and WhatsApp opens on the client's chat with the text ready. See the M10 spec.
 
 ## 9. Data
 

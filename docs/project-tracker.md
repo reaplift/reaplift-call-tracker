@@ -71,6 +71,8 @@ Update your row in the same commit that changes a task's status.
 | [M8](milestones/m8-pilot/spec.md) Pilot | Five employees, then everyone, use it for two weeks with no gaps a manager notices | Not started | ReapLift | M3, M5, M6, M7 | E1 to E7 (E7: legal sign-off) |
 | [M9](milestones/m9-call-from-app/spec.md) Call from the app | The employee taps a number in the app (a CRM lead or a typed number); the phone's dialer calls it on the company SIM; the "call is recorded" line shows first; the after-call form opens after | Not started | unassigned | M4, M5 | E1 |
 | [M10](milestones/m10-whatsapp-templates/spec.md) WhatsApp message templates | The admin writes fixed WhatsApp templates; after a call the employee picks one, the client's name is filled in (or typed), reviews it and WhatsApp opens with the text; the panel logs the send | Design written 12 November 2026, waiting for the owner's approval; questions W1 to W6 in the spec. Not started | unassigned | M4 task 4.5 | E1 |
+| [M11](milestones/m11-crm-look/spec.md) CRM look | Panel (and app colours) in the CRM's colours, fonts, icons and sidebar | Spec outline 12 November 2026 from the CRM's code; design not started; questions C1 to C3 | unassigned | none | CRM screenshots from the client |
+| [M12](milestones/m12-never-record-numbers/spec.md) Numbers never recorded | The super admin lists numbers whose calls are dropped on the phone and refused by the server, never stored or recorded | Spec outline 12 November 2026; design not started; questions N1 to N4 | unassigned | none | none |
 
 ### Product extension set we keep in scope
 
