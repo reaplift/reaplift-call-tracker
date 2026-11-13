@@ -70,6 +70,11 @@ class Prefs(context: Context) {
         get() = prefs.getBoolean("test_call_done", false)
         set(v) = prefs.edit { putBoolean("test_call_done", v) }
 
+    /** App 0.5.1: calls marked "recording missing" before the matching fix were looked at again, once. */
+    var recheckedMissingRecordings: Boolean
+        get() = prefs.getBoolean("rechecked_missing_recordings_051", false)
+        set(v) = prefs.edit { putBoolean("rechecked_missing_recordings_051", v) }
+
     /** M6: recordings are looked for from this time on; set on the first run with recordings (3 days back). */
     var recordingsSince: Long
         get() = prefs.getLong("recordings_since", 0)

@@ -2,6 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import { sql, type Kysely } from 'kysely';
 import {
   RecordingCallRef,
+  RecordingMissing,
   RecordingUploadRequest,
   type RecordingPlayResponse,
   type RecordingUploadResponse,
@@ -93,15 +94,22 @@ export function registerRecordingRoutes(
 
   /** No file matched this call: the panel flags it (HLD 8.6). An upload that already arrived is kept. */
   app.post('/device/v1/recordings/missing', async (req, reply) => {
-    const parsed = RecordingCallRef.safeParse(req.body);
-    if (!parsed.success) return sendError(reply, 400, 'INVALID_REQUEST', 'Send { deviceCallId }');
+    const parsed = RecordingMissing.safeParse(req.body);
+    if (!parsed.success) return sendError(reply, 400, 'INVALID_REQUEST', 'Send { deviceCallId, diagnostics? }');
+    const d = parsed.data.diagnostics;
+    // A folder named after a client must not be stored: long digit runs go, as the phone already does.
+    const folder = d?.bestFolder ? d.bestFolder.replace(/\d{5,}/g, '#') : null;
     const device = req.device!;
     const call = await ownCall(device.deviceId, parsed.data.deviceCallId);
     if (!call) return sendError(reply, 404, 'CALL_NOT_SYNCED', 'This call has not reached the server yet');
     if (call.status === 'uploaded') return reply.code(204).send();
     await sql`
-      insert into recordings (company_id, call_id, status, reported_at) values (${call.company_id}, ${call.id}, 'missing', ${now()})
-      on duplicate key update status = if(status = 'uploaded', status, 'missing'), reported_at = values(reported_at)
+      insert into recordings (company_id, call_id, status, reported_at, files_in_window, best_score, best_folder, best_audio_seconds, best_offset_seconds)
+      values (${call.company_id}, ${call.id}, 'missing', ${now()}, ${d?.filesInWindow ?? null}, ${d?.bestScore ?? null}, ${folder},
+              ${d?.bestAudioSeconds ?? null}, ${d?.bestOffsetSeconds ?? null})
+      on duplicate key update status = if(status = 'uploaded', status, 'missing'), reported_at = values(reported_at),
+        files_in_window = values(files_in_window), best_score = values(best_score), best_folder = values(best_folder),
+        best_audio_seconds = values(best_audio_seconds), best_offset_seconds = values(best_offset_seconds)
     `.execute(db);
     return reply.code(204).send();
   });

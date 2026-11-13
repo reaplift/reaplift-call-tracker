@@ -81,6 +81,18 @@ data class RecordingUploadResponse(val uploadUrl: String, val expiresAt: String,
 data class RecordingCallRef(val deviceCallId: String)
 
 @Serializable
+data class RecordingDiagnostics(
+    val filesInWindow: Int,
+    val bestScore: Int? = null,
+    val bestFolder: String? = null,
+    val bestAudioSeconds: Int? = null,
+    val bestOffsetSeconds: Int? = null,
+)
+
+@Serializable
+data class RecordingMissingRequest(val deviceCallId: String, val diagnostics: RecordingDiagnostics)
+
+@Serializable
 data class CallJson(
     val deviceCallId: String,
     val number: String,
@@ -160,8 +172,9 @@ class ApiClient(
         call("POST", "/device/v1/recordings/complete", json.encodeToString(RecordingCallRef(deviceCallId))) { }
     }
 
-    suspend fun recordingMissing(deviceCallId: String) {
-        call("POST", "/device/v1/recordings/missing", json.encodeToString(RecordingCallRef(deviceCallId))) { }
+    suspend fun recordingMissing(deviceCallId: String, reason: com.reaplift.calls.sync.MissingReason) {
+        val diagnostics = RecordingDiagnostics(reason.filesInWindow, reason.bestScore, reason.bestFolder, reason.bestAudioSeconds, reason.bestOffsetSeconds)
+        call("POST", "/device/v1/recordings/missing", json.encodeToString(RecordingMissingRequest(deviceCallId, diagnostics))) { }
     }
 
     suspend fun config(): DeviceConfig = call("GET", "/device/v1/config", null) { json.decodeFromString(it) }

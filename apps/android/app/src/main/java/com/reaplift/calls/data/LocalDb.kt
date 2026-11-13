@@ -123,6 +123,15 @@ class LocalDb(context: Context) :
     override fun callsNeedingRecording(sinceMs: Long, limit: Int): List<OutgoingCall> =
         query("sent_at is not null and recording_status is null and started_at >= $sinceMs", "started_at asc", limit)
 
+    /** Calls marked missing since `sinceMs` are looked at again (app 0.5.1). Returns how many. */
+    fun resetMissingRecordings(sinceMs: Long): Int {
+        val values = android.content.ContentValues().apply {
+            putNull("recording_status")
+            putNull("recording_at")
+        }
+        return writableDatabase.update("outbox", values, "recording_status = 'missing' and started_at >= ?", arrayOf(sinceMs.toString()))
+    }
+
     override fun markRecording(deviceCallId: String, status: String, uri: String?, at: Long) {
         writableDatabase.execSQL(
             "update outbox set recording_status = ?, recording_uri = ?, recording_at = ? where device_call_id = ?",

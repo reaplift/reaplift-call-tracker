@@ -69,9 +69,9 @@ class AndroidRecordingUploader(
         }
     }
 
-    override suspend fun reportMissing(call: OutgoingCall): UploadResult =
+    override suspend fun reportMissing(call: OutgoingCall, reason: MissingReason): UploadResult =
         try {
-            api.recordingMissing(call.deviceCallId)
+            api.recordingMissing(call.deviceCallId, reason)
             UploadResult.Done
         } catch (e: ApiException) {
             mapped(e) ?: throw e

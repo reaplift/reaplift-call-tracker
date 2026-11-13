@@ -3,6 +3,7 @@ package com.reaplift.calls
 import com.reaplift.calls.sync.AudioFile
 import com.reaplift.calls.sync.AudioSource
 import com.reaplift.calls.sync.DeviceRevokedException
+import com.reaplift.calls.sync.MissingReason
 import com.reaplift.calls.sync.OutgoingCall
 import com.reaplift.calls.sync.RecordingLedger
 import com.reaplift.calls.sync.RecordingMatcher
@@ -45,12 +46,14 @@ private class FakeAudio(vararg files: AudioFile) : AudioSource {
 private class FakeUploader(private val answer: UploadResult = UploadResult.Done) : RecordingUploader {
     val uploaded = mutableListOf<Pair<String, String>>()
     val missing = mutableListOf<String>()
+    val reasons = mutableListOf<MissingReason>()
     override suspend fun upload(call: OutgoingCall, file: AudioFile, score: Int): UploadResult {
         uploaded += call.deviceCallId to file.uri
         return answer
     }
-    override suspend fun reportMissing(call: OutgoingCall): UploadResult {
+    override suspend fun reportMissing(call: OutgoingCall, reason: MissingReason): UploadResult {
         missing += call.deviceCallId
+        reasons += reason
         return answer
     }
 }
@@ -134,15 +137,39 @@ class RecordingSyncTest {
         assertTrue(notReady.marks.isEmpty())
         val down = object : RecordingUploader {
             override suspend fun upload(call: OutgoingCall, file: AudioFile, score: Int): UploadResult = throw java.io.IOException("offline")
-            override suspend fun reportMissing(call: OutgoingCall): UploadResult = throw java.io.IOException("offline")
+            override suspend fun reportMissing(call: OutgoingCall, reason: MissingReason): UploadResult = throw java.io.IOException("offline")
         }
         val offline = FakeLedger(c)
         assertTrue(RecordingSync(offline, FakeAudio(f)).run(down, 0) { end + 60_000 } is SendResult.Failed)
         assertTrue(offline.marks.isEmpty())
         val revoked = object : RecordingUploader {
             override suspend fun upload(call: OutgoingCall, file: AudioFile, score: Int): UploadResult = throw DeviceRevokedException()
-            override suspend fun reportMissing(call: OutgoingCall): UploadResult = throw DeviceRevokedException()
+            override suspend fun reportMissing(call: OutgoingCall, reason: MissingReason): UploadResult = throw DeviceRevokedException()
         }
         assertEquals(SendResult.Revoked, RecordingSync(FakeLedger(c), FakeAudio(f)).run(revoked, 0) { end + 60_000 })
+    }
+
+    @Test
+    fun aMissingRecordingSaysWhyWithoutTheFileName() = runTest {
+        // Right time and folder, but no length and no number in the name: 50 points, under the 60 needed.
+        val near = file("near", "Call recording Asha 2026-11-12.m4a", end + 4_000, null, folder = "Music/Recordings/Call Recordings/")
+        val uploader = FakeUploader()
+        RecordingSync(FakeLedger(c), FakeAudio(near)).run(uploader, 0) { end + 11 * 60_000 }
+        assertEquals(listOf("1"), uploader.missing)
+        assertEquals(MissingReason(1, 50, "Music/Recordings/Call Recordings/", null, 4), uploader.reasons.single())
+        assertTrue("no file name is sent", uploader.reasons.single().toString().contains("Asha").not())
+    }
+
+    @Test
+    fun aMissingRecordingWithNoAudioAtAllSaysSo() = runTest {
+        val uploader = FakeUploader()
+        RecordingSync(FakeLedger(c), FakeAudio()).run(uploader, 0) { end + 11 * 60_000 }
+        assertEquals(MissingReason(0, null, null, null, null), uploader.reasons.single())
+    }
+
+    @Test
+    fun aFolderNamedAfterAClientNumberDoesNotLeaveThePhone() {
+        assertEquals("Recorder/#/", RecordingMatcher.withoutNumbers("Recorder/919845012345/"))
+        assertEquals("Recordings/Call/", RecordingMatcher.withoutNumbers("Recordings/Call/"))
     }
 }

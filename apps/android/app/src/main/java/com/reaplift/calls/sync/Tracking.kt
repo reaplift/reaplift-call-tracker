@@ -59,11 +59,22 @@ object Tracking {
         // Recordings (M6) after the calls and comments: they are the slowest to send.
         if (result is SendResult.Done && MediaStoreAudio.hasPermission(context)) {
             if (prefs.recordingsSince == 0L) prefs.recordingsSince = System.currentTimeMillis() - RecordingRules.FIRST_LOOKBACK_MS
+            // 0.5.1: look again, once, at the last 3 days' "missing" calls, so the server learns why and a recording
+            // found now is uploaded.
+            if (!prefs.recheckedMissingRecordings) {
+                db.resetMissingRecordings(System.currentTimeMillis() - RecordingRules.FIRST_LOOKBACK_MS)
+                prefs.recheckedMissingRecordings = true
+            }
             val recordings = RecordingSync(db, MediaStoreAudio(context)).run(
                 AndroidRecordingUploader(api, context.contentResolver),
                 sinceMs = maxOf(prefs.recordingsSince, prefs.pairedAt - prefs.initialSyncDays * 86_400_000L),
                 now = System::currentTimeMillis,
-                onMissing = { call -> Notifications.recordingMissing(context, call, call.contactName ?: formatNumber(call.number)) },
+                // Only a call that just ended is worth telling the employee about; older ones (such as the 0.5.1
+                // re-check) are reported to the server silently.
+                onMissing = { call ->
+                    if (System.currentTimeMillis() - RecordingRules.callEndMs(call) < 60 * 60_000L)
+                        Notifications.recordingMissing(context, call, call.contactName ?: formatNumber(call.number))
+                },
             )
             if (recordings !is SendResult.Done) result = recordings
         }

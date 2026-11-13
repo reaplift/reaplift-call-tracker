@@ -127,6 +127,29 @@ describe('a missing recording', () => {
     expect((await admin('GET', `/api/calls?${RANGE}&recording=missing`)).json().items.map((c: { number: string }) => c.number)).toEqual(['919900022222']);
     expect((await admin('GET', `/api/calls?${RANGE}&recording=yes`)).json().items.map((c: { number: string }) => c.number)).toEqual(['919900011111']);
   });
+
+  it('keeps the reason app 0.5.1 sends, never a file name, and a client number in a folder is blanked', async () => {
+    const res = await phone(token)('/device/v1/recordings/missing', {
+      deviceCallId: '22',
+      diagnostics: { filesInWindow: 3, bestScore: 50, bestFolder: 'Recorder/919900022222/', bestAudioSeconds: null, bestOffsetSeconds: 4 },
+    });
+    expect(res.statusCode).toBe(204);
+    const row = (
+      await sql<{ status: string; files_in_window: number; best_score: number; best_folder: string; best_audio_seconds: number | null; best_offset_seconds: number }>`
+        select status, files_in_window, best_score, best_folder, best_audio_seconds, best_offset_seconds
+        from recordings where call_id = ${await callIdOf('919900022222')}
+      `.execute(db)
+    ).rows[0];
+    expect(row).toEqual({ status: 'missing', files_in_window: 3, best_score: 50, best_folder: 'Recorder/#/', best_audio_seconds: null, best_offset_seconds: 4 });
+    // A file name is not accepted.
+    const withName = await phone(token)('/device/v1/recordings/missing', { deviceCallId: '22', diagnostics: { filesInWindow: 1, bestName: 'Asha.m4a' } });
+    expect(withName.statusCode).toBe(400);
+  });
+
+  it('lets a recording found later replace "missing"', async () => {
+    const res = await phone(token)('/device/v1/recordings/upload-url', { deviceCallId: '22', sizeBytes: 500_000, mimeType: 'audio/mp4', audioSeconds: 59, matchScore: 80 });
+    expect(res.statusCode).toBe(200);
+  });
 });
 
 describe('playing a recording in the panel', () => {

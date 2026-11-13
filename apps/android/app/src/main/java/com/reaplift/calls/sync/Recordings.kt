@@ -44,11 +44,24 @@ sealed interface UploadResult {
     data object NotConfigured : UploadResult
 }
 
+/**
+ * Why no recording was matched (app 0.5.1, after no recording matched on the first beta phones): how many audio
+ * files the media index had in the call's window, and the closest one's score, folder, length and how far its save
+ * time was from the call's end. Never a file name, which can carry a client's name or number.
+ */
+data class MissingReason(
+    val filesInWindow: Int,
+    val bestScore: Int?,
+    val bestFolder: String?,
+    val bestAudioSeconds: Int?,
+    val bestOffsetSeconds: Int?,
+)
+
 interface RecordingUploader {
     /** Throws DeviceRevokedException when unpaired, or another exception when the network or storage failed. */
     suspend fun upload(call: OutgoingCall, file: AudioFile, score: Int): UploadResult
-    /** No file matched the call: the panel flags it. */
-    suspend fun reportMissing(call: OutgoingCall): UploadResult
+    /** No file matched the call: the panel flags it, and the reason helps tune the matching per brand. */
+    suspend fun reportMissing(call: OutgoingCall, reason: MissingReason): UploadResult
 }
 
 object RecordingRules {
@@ -106,6 +119,22 @@ object RecordingMatcher {
         return score.coerceIn(0, 100)
     }
 
+    /** The closest file, good enough or not, to explain a missing recording. */
+    fun explain(call: OutgoingCall, files: List<AudioFile>, used: Set<String>): MissingReason {
+        val candidates = files.filter { it.uri !in used }
+        val best = candidates.maxByOrNull { score(call, it) }
+        return MissingReason(
+            filesInWindow = candidates.size,
+            bestScore = best?.let { score(call, it) },
+            bestFolder = best?.folder?.let(::withoutNumbers)?.take(200),
+            bestAudioSeconds = best?.durationMs?.let { (it / 1000).toInt() },
+            bestOffsetSeconds = best?.let { ((it.addedAtMs - RecordingRules.callEndMs(call)) / 1000).toInt() },
+        )
+    }
+
+    /** A folder named after a client (some recorder apps do this) must not leave the phone: long digit runs go. */
+    fun withoutNumbers(folder: String) = folder.replace(Regex("\\d{5,}"), "#")
+
     /** The best file for the call that no other call has used, if it is good enough. */
     fun best(call: OutgoingCall, files: List<AudioFile>, used: Set<String>): Pair<AudioFile, Int>? =
         files.filter { it.uri !in used }
@@ -132,7 +161,7 @@ class RecordingSync(private val ledger: RecordingLedger, private val audio: Audi
             val result = try {
                 when {
                     match != null -> uploader.upload(call, match.first, match.second)
-                    now() - end >= RecordingRules.GIVE_UP_MS -> uploader.reportMissing(call)
+                    now() - end >= RecordingRules.GIVE_UP_MS -> uploader.reportMissing(call, RecordingMatcher.explain(call, files, used))
                     else -> continue
                 }
             } catch (e: DeviceRevokedException) {

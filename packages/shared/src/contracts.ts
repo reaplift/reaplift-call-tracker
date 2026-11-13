@@ -242,6 +242,23 @@ export interface RecordingUploadResponse {
 
 export const RecordingCallRef = z.object({ deviceCallId: z.string().min(1).max(64) }).strict();
 
+/** Why the phone found no recording (app 0.5.1). Older apps send only `deviceCallId`. Never a file name. */
+export const RecordingMissing = z
+  .object({
+    deviceCallId: z.string().min(1).max(64),
+    diagnostics: z
+      .object({
+        filesInWindow: z.number().int().min(0).max(10_000),
+        bestScore: z.number().int().min(0).max(100).nullable().optional(),
+        bestFolder: z.string().max(200).nullable().optional(),
+        bestAudioSeconds: z.number().int().min(0).max(86_400).nullable().optional(),
+        bestOffsetSeconds: z.number().int().min(-86_400).max(86_400).nullable().optional(),
+      })
+      .strict()
+      .optional(),
+  })
+  .strict();
+
 export interface RecordingPlayResponse {
   url: string;
   expiresAt: string;
