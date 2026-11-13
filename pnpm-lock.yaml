@@ -81,6 +81,12 @@ importers:
 
   apps/web:
     dependencies:
+      '@fontsource/material-icons':
+        specifier: 5.1.0
+        version: 5.1.0
+      '@fontsource/poppins':
+        specifier: 5.1.0
+        version: 5.1.0
       '@reaplift/calls-shared':
         specifier: workspace:*
         version: link:../../packages/shared
@@ -943,6 +949,12 @@ packages:
 
   '@fastify/static@8.3.0':
     resolution: {integrity: sha512-yKxviR5PH1OKNnisIzZKmgZSus0r2OZb8qCSbqmw34aolT4g3UlzYfeBRym+HJ1J471CR8e2ldNub4PubD1coA==}
+
+  '@fontsource/material-icons@5.1.0':
+    resolution: {integrity: sha512-xqTEO5vcVl8saTAi3QBRpGot4pX9WkqR7lOp07NfHwizigIPUTWnCc9UNlotWs3Jt4TWI8GKomDn2HdK2GwOtw==}
+
+  '@fontsource/poppins@5.1.0':
+    resolution: {integrity: sha512-tpLXlnNi2fwQjiipvuj4uNFHCdoLA8izRsKdoexZuEzjx0r/g1aKLf4ta6lFgF7L+/+AFdmaXFlUwwvmDzYH+g==}
 
   '@humanfs/core@0.19.2':
     resolution: {integrity: sha512-UhXNm+CFMWcbChXywFwkmhqjs3PRCmcSa/hfBgLIb7oQ5HNb1wS0icWsGtSAUNgefHeI+eBrA8I1fxmbHsGdvA==}
@@ -3873,6 +3885,10 @@ snapshots:
       fastify-plugin: 5.1.0
       fastq: 1.20.3
       glob: 11.1.0
+
+  '@fontsource/material-icons@5.1.0': {}
+
+  '@fontsource/poppins@5.1.0': {}
 
   '@humanfs/core@0.19.2':
     dependencies:

@@ -1,65 +1,138 @@
+/*
+ * The panel in the CRM's look (M11, client 12 November 2026), taken from the CRM's own stylesheet
+ * (reaplift/crm-laravel, public/assets/css/style.css): Poppins, purple #92419a, the peach-to-lavender background,
+ * a floating white sidebar with Material icons, translucent content area, pink-edged cards, orange figures.
+ */
 :root {
-  --bg: #f6f7f9;
+  --bg: #f9f4f8;
   --card: #ffffff;
-  --text: #14171f;
-  --muted: #5b6170;
-  --line: #e2e5ea;
-  --brand: #4b2bd6;
-  --error: #b42318;
-  font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --glass: #ffffffbd;
+  --text: #2d2430;
+  --muted: #6b6470;
+  --line: #f0e1ee;
+  --card-line: #f5e8e9;
+  --brand: #92419a;
+  --brand-dark: #783d7f;
+  --brand-soft: #fef3ff;
+  --navy: #012970;
+  --orange: #ff7d09;
+  --in: #1e8a4c;
+  --out: #c56a00;
+  --error: #c0283a;
+  --radius: 15px;
+  font-family: 'Poppins', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  font-size: 14px;
   color: var(--text);
   background: var(--bg);
 }
-body { margin: 0; background: var(--bg); }
-h1 { font-size: 22px; margin: 0 0 16px; }
-h2 { font-size: 18px; margin: 0 0 12px; }
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--bg) url('./assets/crm-background.jpg') center / cover fixed no-repeat;
+  min-height: 100vh;
+}
+h1 { font-size: 22px; font-weight: 600; color: var(--navy); margin: 0 0 16px; }
+h2 { font-size: 17px; font-weight: 600; color: var(--brand); margin: 0 0 12px; }
 .muted { color: var(--muted); font-size: 13px; }
 .error { color: var(--error); }
 .loading { padding: 24px; }
-.card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 16px; margin-bottom: 16px; }
+.card { background: var(--card); border: 1px solid var(--card-line); border-radius: var(--radius); padding: 18px; margin-bottom: 16px; }
 label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--muted); }
-input, select { font: inherit; color: var(--text); padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: #fff; }
-button, a.button { font: inherit; padding: 8px 14px; border-radius: 8px; border: 1px solid var(--brand); background: var(--brand); color: #fff; cursor: pointer; text-decoration: none; display: inline-block; }
+input, select { font: inherit; color: var(--text); padding: 8px 12px; border: 1px solid #eeeae9; border-radius: 6px; background: #fff; }
+input:focus, select:focus { outline: 2px solid var(--brand); outline-offset: -1px; }
+button, a.button {
+  font: inherit; font-weight: 500; padding: 8px 18px; border-radius: 6px; border: 1px solid var(--brand);
+  background: var(--brand); color: #fff; cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; gap: 6px;
+}
+button:hover, a.button:hover { background: var(--brand-dark); border-color: var(--brand-dark); }
 button.secondary, a.button.secondary { background: #fff; color: var(--brand); }
+button.secondary:hover, a.button.secondary:hover { background: var(--brand-soft); }
 button:disabled { opacity: 0.6; cursor: default; }
+button:focus-visible, a.button:focus-visible { outline: 2px solid var(--navy); outline-offset: 2px; }
+a { color: #4154f1; }
+
+/* Material Icons, as the CRM's sidebar uses them (self-hosted: the panel loads nothing from other sites). */
+.mi {
+  font-family: 'Material Icons'; font-weight: normal; font-style: normal; font-size: 20px; line-height: 1;
+  letter-spacing: normal; text-transform: none; display: inline-block; white-space: nowrap; direction: ltr;
+  -webkit-font-smoothing: antialiased; font-feature-settings: 'liga';
+}
+
+/* Login */
 .login { display: grid; place-items: center; min-height: 100vh; padding: 16px; }
-.login form { width: 100%; max-width: 360px; display: flex; flex-direction: column; gap: 12px; }
-.shell nav { display: flex; align-items: center; gap: 8px; padding: 12px 16px; background: var(--card); border-bottom: 1px solid var(--line); flex-wrap: wrap; }
-.shell nav button { background: none; color: var(--text); border-color: transparent; }
-.shell nav button.active { background: #ece8fd; color: var(--brand); }
-.shell nav button.secondary { border-color: var(--line); }
-.shell nav .spacer { flex: 1; }
-.shell main { padding: 16px; max-width: 1200px; margin: 0 auto; }
+.login form { width: 100%; max-width: 380px; display: flex; flex-direction: column; gap: 14px; border-radius: 30px; padding: 32px; box-shadow: rgba(149, 157, 165, 0.2) -10px -15px 20px; }
+.login .logo { height: 40px; align-self: flex-start; }
+.login h1 { font-size: 20px; margin: 0; }
+
+/* Shell: floating sidebar and translucent content, as the CRM's layouts.page */
+.shell { display: grid; grid-template-columns: 230px minmax(0, 1fr); gap: 20px; padding: 20px; min-height: 100vh; }
+.sidebar {
+  position: sticky; top: 20px; align-self: start; height: calc(100vh - 40px); overflow-y: auto;
+  background: var(--glass); border-radius: 30px; box-shadow: 0 0 20px rgba(1, 41, 112, 0.1); padding: 20px 14px;
+  display: flex; flex-direction: column; gap: 4px;
+}
+.sidebar .logo { height: 34px; align-self: flex-start; margin: 0 8px 4px; }
+.sidebar .product { font-size: 12px; font-weight: 600; color: var(--muted); letter-spacing: 0.08em; text-transform: uppercase; margin: 0 10px 14px; }
+.sidebar nav { display: flex; flex-direction: column; gap: 4px; }
+.sidebar nav button {
+  background: none; border: none; color: #443f3b; font-size: 15px; font-weight: 600; padding: 10px 14px; border-radius: 6px;
+  justify-content: flex-start; gap: 12px; width: 100%;
+}
+.sidebar nav button .mi { color: #443f3b; }
+.sidebar nav button:hover, .sidebar nav button.active { background: var(--brand-soft); color: var(--brand); }
+.sidebar nav button:hover .mi, .sidebar nav button.active .mi { color: var(--brand); }
+.sidebar .spacer { flex: 1; }
+.sidebar .who { font-size: 13px; color: var(--muted); margin: 8px 10px; overflow-wrap: anywhere; }
+.shell main { background: var(--glass); border-radius: 30px; padding: 28px; min-width: 0; }
+.shell main > section { max-width: 1280px; }
+
 .row, .filters { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; }
 .filters label { min-width: 130px; flex: 1; }
-table { width: 100%; border-collapse: collapse; background: var(--card); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; margin-bottom: 16px; }
-th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); font-size: 14px; vertical-align: top; }
-th { font-size: 12px; color: var(--muted); font-weight: 600; background: #fafbfc; }
+table { width: 100%; border-collapse: separate; border-spacing: 0; background: var(--card); border: 1px solid var(--card-line); border-radius: var(--radius); overflow: hidden; margin-bottom: 16px; }
+th, td { text-align: left; padding: 11px 14px; border-bottom: 1px solid var(--card-line); font-size: 14px; vertical-align: middle; }
+tr:last-child td { border-bottom: none; }
+th { font-size: 12px; color: var(--brand); font-weight: 600; background: var(--brand-soft); text-transform: uppercase; letter-spacing: 0.04em; }
+tbody tr:hover td { background: #fffafe; }
 tr.left td { color: var(--muted); }
 td.actions { display: flex; gap: 6px; flex-wrap: wrap; }
-.tag { margin-left: 6px; font-size: 11px; padding: 2px 6px; border-radius: 6px; background: var(--line); color: var(--muted); }
-.type { font-size: 12px; padding: 2px 8px; border-radius: 10px; background: var(--line); }
-.type.missed, .type.rejected { background: #fde8e7; color: var(--error); }
-.type.outgoing { background: #e7f0fd; color: #1d4ed8; }
-.type.incoming { background: #e6f6ec; color: #15803d; }
-.overlay { position: fixed; inset: 0; background: rgba(20, 23, 31, 0.45); display: grid; place-items: center; padding: 16px; }
-.dialog { max-width: 400px; width: 100%; text-align: center; }
+.tag { margin-left: 6px; font-size: 11px; padding: 2px 8px; border-radius: 9999px; background: #eef2ff; color: var(--muted); }
+.type { font-size: 12px; padding: 2px 10px; border-radius: 9999px; background: var(--line); }
+.type.missed, .type.rejected { background: #fde8ea; color: var(--error); }
+.type.outgoing { background: #fff1e3; color: var(--out); }
+.type.incoming { background: #e6f6ec; color: var(--in); }
+.overlay { position: fixed; inset: 0; background: rgba(45, 20, 50, 0.45); display: grid; place-items: center; padding: 16px; }
+.dialog { max-width: 400px; width: 100%; text-align: center; border-radius: 30px; }
 .qr svg { width: 240px; height: 240px; }
-.code { font-size: 32px; font-weight: 700; letter-spacing: 6px; margin: 8px 0; }
-@media (max-width: 700px) {
+.code { font-size: 32px; font-weight: 700; letter-spacing: 6px; margin: 8px 0; color: var(--brand); }
+.notice { border: 1px solid var(--brand); background: var(--brand-soft); border-radius: 8px; padding: 8px 12px; margin: 8px 0; }
+
+/* Dashboard (M2 task 2.7): four cards of 13 tiles, styled like the CRM's dashboard cards. */
+.dash { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px; }
+.period { margin-bottom: 0; }
+.period h2 { margin: 0 0 12px; font-size: 18px; display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.period h2 small { font-size: 12px; font-weight: 400; color: #899bbd; }
+.tiles { display: grid; grid-template-columns: 1fr 1fr; grid-auto-rows: 1fr; gap: 8px; }
+.tile {
+  display: grid; gap: 2px; text-align: left; background: #fff; color: var(--text); border: 1px solid var(--card-line);
+  border-radius: 10px; padding: 8px 10px; cursor: pointer; font: inherit; min-width: 0; align-content: start;
+}
+.tile:hover, .tile:focus-visible { background: linear-gradient(90deg, #fceefe, #de98e5); border-color: #de98e5; outline: none; color: var(--text); }
+.tile b { font-size: 16px; font-weight: 600; color: var(--orange); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.tile span { font-size: 12.5px; line-height: 1.3; color: #555; }
+.tile.in span { color: var(--in); }
+.tile.out span { color: var(--out); }
+.tile.bad span { color: var(--error); }
+
+/* Narrow screens: the sidebar becomes a bar across the top, as the CRM hides its sidebar below 1200px. */
+@media (max-width: 900px) {
+  .shell { grid-template-columns: minmax(0, 1fr); gap: 12px; padding: 12px; }
+  .sidebar { position: static; height: auto; border-radius: 20px; padding: 12px; }
+  .sidebar nav { flex-direction: row; flex-wrap: wrap; }
+  .sidebar nav button { width: auto; padding: 8px 10px; font-size: 14px; }
+  .sidebar .spacer { display: none; }
+  .shell main { padding: 18px; border-radius: 20px; }
   table { display: block; overflow-x: auto; }
 }
-.notice { border: 1px solid var(--brand); border-radius: 8px; padding: 8px 12px; margin: 8px 0; }
-
-/* Dashboard (M2 task 2.7): four cards of 13 tiles, wrapping on narrow screens. */
-.dash { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 14px; }
-.period h2 { margin: 0 0 12px; font-size: 20px; display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
-.period h2 small { font-size: 12px; font-weight: 400; color: var(--muted); }
-.tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-.tile { display: grid; gap: 2px; text-align: left; background: var(--bg); color: var(--text); border: 1px solid transparent; border-radius: 8px; padding: 8px 10px; cursor: pointer; font: inherit; min-width: 0; }
-.tile:hover, .tile:focus-visible { border-color: var(--brand); outline: none; }
-.tile b { font-size: 17px; font-variant-numeric: tabular-nums; }
-.tile span { font-size: 12.5px; color: var(--muted); }
-.tile.in span { color: #1e8a4c; }
-.tile.out span { color: #c56a00; }
-.tile.bad span { color: var(--error); }
+@media (prefers-reduced-motion: no-preference) {
+  .tile, .sidebar nav button, button { transition: background-color 0.15s, color 0.15s; }
+}

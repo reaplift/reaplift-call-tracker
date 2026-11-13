@@ -52,7 +52,7 @@ class AfterCallActivity : ComponentActivity() {
         // Touches pass through while we look for the call, so an invisible window never blocks the phone.
         window.addFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE)
         setContent {
-            MaterialTheme {
+            CallitTheme {
                 AfterCallPopup(
                     since = since,
                     onFound = { window.clearFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE) },

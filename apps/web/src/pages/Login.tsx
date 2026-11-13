@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react';
 import { api, ApiError, type User } from '../api';
+import logo from '../assets/reaplift-logo.png';
 
 export function Login({ onLogin }: { onLogin: (user: User) => void }) {
   const [email, setEmail] = useState('');
@@ -23,7 +24,8 @@ export function Login({ onLogin }: { onLogin: (user: User) => void }) {
   return (
     <main className="login">
       <form onSubmit={submit} className="card">
-        <h1>ReapLift Call Tracker</h1>
+        <img className="logo" src={logo} alt="ReapLift" />
+        <h1>Callit: log in</h1>
         <label>
           Email
           <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="username" required />

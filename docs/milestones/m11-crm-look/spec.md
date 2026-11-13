@@ -1,6 +1,6 @@
 # M11. Callit in the CRM's look
 
-- Status: **Design not started.** Asked by the client on 12 November 2026. The order the owner set: approve the design, write the spec, finish the design, then build.
+- Status: **Panel built and live 13 November 2026** on the owner's go-ahead ("fix the theme sync with CRM"), taken from the CRM's own stylesheet; screenshots in `screens/`. App colours built, shipping with the next app release (0.5.2). Defaults used for C1 to C3: sidebar like the CRM, panel plus app colours, ReapLift's logo with "Callit".
 - Owner: unassigned
 - Starts after: none (panel and app styling only)
 - External prerequisites: two or three screenshots of the CRM's main pages from the client, to confirm what they see matches the CRM's code
@@ -36,7 +36,16 @@ In: panel theme (colours, fonts, icons, sidebar, buttons, tables, forms), app co
 
 Out: changes to the CRM itself; a theme picker; per-company branding (each company's own logo and colours), which can come later if a client asks.
 
-## Open questions (default in brackets)
+## What was built (13 November 2026)
+
+- **Panel:**
+  - **Look and layout:** the CRM's peach-to-lavender background image, a floating white sidebar with ReapLift's logo and Material icons, translucent content area, Poppins (self-hosted, so the panel still loads nothing from other sites).
+  - **Colours:** purple buttons and active items, navy page titles, pink-edged cards; dashboard figures in the CRM's orange, with its purple gradient on hover.
+  - **Narrow screens:** the sidebar becomes a bar at the top.
+- **App:** a Callit theme in the CRM's purple and orange (`ui/Theme.kt`) for the main screens and the after-call pop-up.
+- Screens: `screens/login.png`, `dashboard.png`, `calls.png`, `settings.png`, `phone.png` (local test data).
+
+## Open questions (default in brackets; built with the defaults, change on request)
 
 - C1. Use the CRM's sidebar layout, or keep Callit's top tabs in the CRM's colours? [Sidebar, like the CRM.]
 - C2. Should the app change too, or only the panel? [Both: the panel fully, the app's colours and heading font.]

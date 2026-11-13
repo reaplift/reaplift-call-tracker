@@ -21,7 +21,7 @@ class MainActivity : ComponentActivity() {
         pairLink.value = parsePairLink(intent?.data)
         commentCall.value = intent?.getStringExtra(Notifications.EXTRA_COMMENT_CALL)
         setContent {
-            MaterialTheme {
+            CallitTheme {
                 Surface(modifier = Modifier.fillMaxSize()) {
                     App(pairLink.value, commentCall.value, onCommentClosed = { commentCall.value = null })
                 }
