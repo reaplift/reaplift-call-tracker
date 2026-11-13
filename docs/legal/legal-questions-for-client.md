@@ -1,66 +1,79 @@
-# Callit: questions for your legal team before launch
+# Callit: questions for your legal team
 
-Prepared by ReapLift, 13 November 2026. Today Callit is installed by APK for a small beta. Before rolling it out to all employees, and publishing it on Google Play, we need your legal team's answers and approval on the points below. This is a list of questions, not legal advice.
+From ReapLift, 13 November 2026.
 
-## What Callit does (facts for your lawyers)
+Callit is now being tested by a few of your employees through an app file we send them. Before all your employees use it, and before we put it on the Google Play Store, your legal team needs to answer the questions below and approve a few documents. This is a list of questions for your lawyers. It is not legal advice.
 
-- Employees install the Callit app on a phone with a **company SIM**. The app reads the phone's call log and sends **only calls on the company SIM** to our server: number, contact name saved on the phone, call type, time, talk and ringing time. Calls on a personal SIM never leave the phone.
-- If the phone's own dialer records calls, the app finds the recording of each company-SIM call and uploads it. **Callit doesn't record calls itself.** Recordings are kept for **12 months**, then deleted.
-- After each call the employee can add an outcome, a comment and a follow-up date.
-- Managers see call history, reports and recordings in a web panel. Your CRM can read the same data through an API key.
-- Admins can list numbers that are **never recorded or stored** (for example a director or a family member), and can delete past calls with those numbers.
-- Planned: employees send fixed WhatsApp message templates to clients from their own WhatsApp.
-- Where the data is kept: our server and database on Hostinger (India, Mumbai data centre); recordings on Cloudflare R2 (storage location to confirm).
+## Who is who
 
-## 1. Who is responsible for the data (DPDP Act 2023)
+| Who | What they do in Callit |
+| --- | --- |
+| **Your company** | The company whose employees use Callit. You decide why call data is collected, who in your company can see it, and how long it is kept. The data is yours. |
+| **ReapLift** | Built Callit and runs it for you. We store the data on our servers and only use it to provide Callit to you. We don't use it for anything else. |
+| **Your employees** | Install the Callit app on their work phone, which has a company SIM. |
+| **Your customers** | The people your employees call, or who call your employees. Their phone numbers, names and call recordings are stored in Callit. |
+| **Hostinger and Cloudflare** | Companies ReapLift pays to host Callit. Hostinger runs our server and database. Cloudflare stores the call recordings. |
 
-1. Is your company the **data fiduciary** and ReapLift the **data processor** for employees' and customers' call data?
-2. What must the **agreement between your company and ReapLift** contain: purpose, security, breach reporting, deletion at the end of the contract, audits, and our sub-processors (Hostinger, Cloudflare)?
-3. Is it acceptable for recordings to be stored outside India if Cloudflare's storage isn't in India, or must all data stay in India?
-4. Who handles a breach notification to the Data Protection Board and to affected people, and within what time?
+## What Callit does
 
-## 2. Employees
+- The app runs on the employee's work phone. It sends **only calls made or received on the company SIM** to our server: the phone number, the contact name saved on the phone, whether the call was incoming, outgoing or missed, the time, and how long it rang and lasted. Calls on a personal SIM never leave the phone.
+- Callit does not record calls. If the phone's own calling app records calls, Callit finds the recording of each company-SIM call and uploads it. Recordings are deleted after **12 months**.
+- After each call, the employee can note how the call went, add a comment and set a follow-up date.
+- Your managers see the calls, reports and recordings on a website. Your CRM can read the same information.
+- Your admins can list phone numbers that Callit must never record or keep, for example a director or a family member, and can delete earlier calls with those numbers.
+- Coming next: employees send ready-made WhatsApp messages to customers from their own WhatsApp.
+- Where data is kept: our server and database are with Hostinger in India (Mumbai). Recordings are with Cloudflare; we are confirming which country.
 
-5. On what basis can you process employees' company-SIM call data: **consent**, or a "legitimate use" for employment purposes under the Act? Do you want both?
-6. Please approve or edit the **employee call-tracking policy**: company SIM for work only, what is collected, who sees it, how long it's kept, what happens when someone leaves.
-7. Please approve or edit the **consent text shown in the app** before tracking starts. Today it explains the company-SIM calls, recordings and the after-call form. We'll send the current text.
-8. If an employee **withdraws consent**, what should happen: stop tracking only, or also delete their data?
-9. When an employee **leaves**, how long do you keep their calls and recordings?
-10. Does anything change for employees on contract, interns, or in states with specific employment rules?
+## 1. Responsibility for the data
 
-## 3. Customers on the other end of the call
+India's data protection law (the Digital Personal Data Protection Act, 2023) treats the company that decides how data is used differently from the company that handles it on its behalf. We believe your company is the one that decides, and ReapLift handles the data for you.
 
-11. Customers' numbers, names and voices are personal data. What **notice** must they get? We plan for the employee to say at the start of each call: *"This call is recorded and monitored for quality."* Is that wording enough, and is it needed on every call?
-12. Should your website's **privacy notice** mention call recording and the CRM, and what should it say?
-13. How do you want to handle a customer asking to **see or delete** their calls or recordings? The never-record list and deletion feature can support this.
-14. Are any of your customers in a **regulated sector** (banking, insurance, health, government) with extra rules on recording or retention?
+1. Do you agree with that split?
+2. What should the **agreement between your company and ReapLift** say? For example: what we may use the data for, how we keep it safe, how fast we tell you about a leak, what happens to the data when the contract ends, and that we use Hostinger and Cloudflare.
+3. Can recordings be stored outside India, or must everything stay in India?
+4. If data leaks, who tells the government's data protection board and the people affected, and how quickly?
 
-## 4. Call recording
+## 2. Your employees
 
-15. Is recording by one party to the call (the employee's phone) lawful for your business in India, given the notice in question 11?
-16. Is **12 months** the right retention for recordings, and for call details (which we keep longer for reports)? Should it be shorter or longer?
-17. Who in your company may **listen** to recordings? Every play is logged today.
+5. Do you need each employee's **written agreement** to track their company-SIM calls, or is it enough that it's part of their job? Do you want both?
+6. Please write or approve a short **company SIM policy** for employees: the company SIM is for work only, what Callit collects, who can see it, how long it's kept, and what happens when someone leaves.
+7. Please approve the **message the app shows** before tracking starts, which the employee must accept. We'll send you the current wording.
+8. If an employee **changes their mind** and no longer agrees, should we only stop tracking, or also delete their calls?
+9. When an employee **leaves the company**, how long should we keep their calls and recordings?
 
-## 5. WhatsApp templates (planned)
+## 3. Your customers
 
-18. Employees will send fixed messages from **their own WhatsApp** to clients they just spoke with. Do you need the client's **opt-in** first, and is there any wording to avoid (marketing versus service messages)?
-19. Must employees use **WhatsApp Business** on the company SIM rather than personal WhatsApp?
+10. Customers' numbers, names and voices are personal information. What must they be told? Our plan is for the employee to say at the start of each call: *"This call is recorded for quality purposes."* Is that enough? Is it needed on every call?
+11. Should your website's privacy page mention that calls are recorded? What should it say?
+12. If a customer asks to **see or delete** their calls or recordings, who handles it and how quickly?
+13. Are any of your customers banks, insurers, hospitals or government offices? They may have extra rules about recording calls.
 
-## 6. Publishing on Google Play instead of APK
+## 4. Recording calls
 
-20. Google Play only allows apps to read the call log for approved uses. We would apply under the **"enterprise CRM"** use, with a permissions declaration and a video of the app. Is your company the right **publisher**, or ReapLift? (An organisation developer account needs the company's D-U-N-S number.)
-21. Play needs a public **privacy policy** URL and a **Data safety** form describing what is collected and shared. Who approves those texts?
-22. Would you prefer a **private app** through Managed Google Play, installed only on your employees' phones, instead of a public listing? It still goes through Google's review, but it isn't public.
+14. Can your employees' phones legally record calls in India if the customer is told, as in question 10?
+15. Is **12 months** the right time to keep recordings? How long should we keep the other call details, which reports use?
+16. Who in your company may listen to recordings? Callit already logs every time someone plays one.
 
-## Documents we need back
+## 5. WhatsApp messages (coming next)
 
-| Document | Who drafts | Who approves |
+17. Employees will send ready-made messages from their own WhatsApp to customers they have just spoken to. Must the customer agree to receive WhatsApp messages first? Are there messages we should avoid, such as offers and promotions?
+18. Should employees use a WhatsApp Business account on the company SIM, instead of their personal WhatsApp?
+
+## 6. Moving from the app file to the Play Store
+
+19. Google only lets an app read a phone's call history if it has a good reason and Google approves it. We'd explain that Callit is a work tool for tracking business calls, and show Google a short video of the app. Should the app be published under **your company's name** or **ReapLift's**? Google asks a company publishing apps for its official business registration details.
+20. Google requires a **public privacy policy** and a form listing what data the app collects and who it's shared with. We can draft both. Who in your company approves them?
+21. Would you prefer the app to be **private**, so only your employees can install it from the Play Store and the public can't find it? Google still checks it either way.
+
+## What we need back from you
+
+| Document | Who writes it | Who approves it |
 | --- | --- | --- |
-| Company ↔ ReapLift agreement, with data processing terms | ReapLift / your legal team | Both companies |
-| Employee call-tracking policy, signed by each employee | Your legal / HR | Your legal |
-| In-app consent text | ReapLift (draft) | Your legal |
-| Customer notice line and privacy notice update | Your legal | Your legal |
-| Public privacy policy and Play Store Data safety answers | ReapLift (draft) | Your legal |
-| Retention periods (recordings, call details, ex-employees) | Your legal | Your management |
+| Agreement between your company and ReapLift, including how we handle your data | ReapLift and your legal team | Both companies |
+| Company SIM policy, signed by each employee | Your legal team or HR | Your legal team |
+| The message the app shows employees before tracking | ReapLift | Your legal team |
+| The line employees say to customers, and your website's privacy page | Your legal team | Your legal team |
+| Callit's privacy policy and the Play Store data form | ReapLift | Your legal team |
+| How long to keep recordings, call details, and leavers' data | Your legal team | Your management |
 
-Once these are approved, we'll put the final texts into the app and panel, record each employee's signed policy and consent, and prepare the Google Play submission.
+When these are approved, we'll put the final wording into the app, keep a record of each employee's signed policy and agreement, and send the app to Google for the Play Store.
