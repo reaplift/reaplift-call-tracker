@@ -31,7 +31,7 @@ data class LocalCall(
  * after-call forms (M4) with the company's outcomes. Nothing from a personal SIM is ever written here.
  */
 class LocalDb(context: Context) :
-    SQLiteOpenHelper(context, "calls.db", null, 4), Outbox, CallEnds, CommentStore, RecordingLedger {
+    SQLiteOpenHelper(context, "calls.db", null, 5), Outbox, CallEnds, CommentStore, RecordingLedger, com.reaplift.calls.whatsapp.SendStore {
 
     override fun onCreate(db: SQLiteDatabase) {
         db.execSQL(
@@ -54,6 +54,7 @@ class LocalDb(context: Context) :
         addAfterCallForm(db)
         addRecordings(db)
         addNoteTemplates(db)
+        addWhatsApp(db)
     }
 
     override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
@@ -61,6 +62,71 @@ class LocalDb(context: Context) :
         if (oldVersion < 2) addAfterCallForm(db)
         if (oldVersion < 3) addRecordings(db)
         if (oldVersion < 4) addNoteTemplates(db)
+        if (oldVersion < 5) addWhatsApp(db)
+    }
+
+    /** Version 5 (M10): the company's WhatsApp templates, and the log of sends waiting to be uploaded. */
+    private fun addWhatsApp(db: SQLiteDatabase) {
+        db.execSQL("create table message_templates (id text primary key, title text not null, body text not null, sort integer not null)")
+        db.execSQL(
+            """
+            create table message_sends (
+              device_send_id text primary key,
+              template_id text,
+              number text not null,
+              device_call_id text,
+              body text not null,
+              app text not null,
+              opened_at integer not null,
+              uploaded_at integer
+            )
+            """.trimIndent(),
+        )
+    }
+
+    fun messageTemplates(): List<com.reaplift.calls.whatsapp.MessageTemplate> =
+        readableDatabase.rawQuery("select id, title, body from message_templates order by sort", null).use { c ->
+            buildList { while (c.moveToNext()) add(com.reaplift.calls.whatsapp.MessageTemplate(c.getString(0), c.getString(1), c.getString(2))) }
+        }
+
+    fun replaceMessageTemplates(list: List<com.reaplift.calls.whatsapp.MessageTemplate>) {
+        writableDatabase.transaction {
+            execSQL("delete from message_templates")
+            list.forEachIndexed { i, t -> execSQL("insert into message_templates (id, title, body, sort) values (?, ?, ?, ?)", arrayOf(t.id, t.title, t.body, i)) }
+        }
+    }
+
+    fun addSend(s: com.reaplift.calls.whatsapp.PendingSend) {
+        writableDatabase.execSQL(
+            "insert or ignore into message_sends (device_send_id, template_id, number, device_call_id, body, app, opened_at) values (?, ?, ?, ?, ?, ?, ?)",
+            arrayOf(s.deviceSendId, s.templateId, s.number, s.deviceCallId, s.body, s.app, s.openedAtMs),
+        )
+    }
+
+    override fun sendsToUpload(limit: Int): List<com.reaplift.calls.whatsapp.PendingSend> =
+        readableDatabase.rawQuery(
+            // Wait until the call reached the server, so the server can link the send to it.
+            "select s.device_send_id, s.template_id, s.number, s.device_call_id, s.body, s.app, s.opened_at from message_sends s " +
+                "where s.uploaded_at is null and (s.device_call_id is null or exists " +
+                "(select 1 from outbox o where o.device_call_id = s.device_call_id and o.sent_at is not null)) " +
+                "order by s.opened_at limit $limit",
+            null,
+        ).use { c ->
+            buildList {
+                while (c.moveToNext()) {
+                    add(
+                        com.reaplift.calls.whatsapp.PendingSend(
+                            c.getString(0), c.getString(1), c.getString(2), c.getString(3), c.getString(4), c.getString(5), c.getLong(6),
+                        ),
+                    )
+                }
+            }
+        }
+
+    override fun markSendsUploaded(ids: Collection<String>, at: Long) {
+        writableDatabase.transaction {
+            ids.forEach { execSQL("update message_sends set uploaded_at = ? where device_send_id = ?", arrayOf(at, it)) }
+        }
     }
 
     /** Version 4: the company's ready-made notes for the after-call pop-up. */

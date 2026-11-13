@@ -57,6 +57,7 @@ fun CommentForm(item: LocalCall, onDone: () -> Unit) {
     var outcomeId by remember { mutableStateOf(item.outcomeId) }
     var note by remember { mutableStateOf(item.note.orEmpty()) }
     var followUp by remember { mutableStateOf(item.followUpAtMs) }
+    var whatsAppOpen by remember { mutableStateOf(false) }
     val call = item.call
     val who = call.contactName ?: formatNumber(call.number)
 
@@ -77,7 +78,11 @@ fun CommentForm(item: LocalCall, onDone: () -> Unit) {
         }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             OutlinedButton(onClick = { dial(context, call.number) }) { Text("Call") }
-            OutlinedButton(onClick = { whatsapp(context, call.number) }) { Text("WhatsApp") }
+            OutlinedButton(onClick = { whatsAppOpen = true }) { Text("WhatsApp") }
+        }
+        // M10: the company's WhatsApp templates, with this call's follow-up date for {{follow_up_date}}.
+        if (whatsAppOpen) {
+            com.reaplift.calls.whatsapp.WhatsAppDialog(call.number, call.contactName, call.deviceCallId, followUp) { whatsAppOpen = false }
         }
 
         if (outcomes.isNotEmpty()) {

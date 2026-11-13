@@ -90,6 +90,12 @@ export class RateLimiter {
   }
 }
 
+/** A version or package name from a phone header: letters, digits, dots, dashes and underscores only. */
+function deviceHeader(value: string | string[] | undefined): string | null {
+  const v = Array.isArray(value) ? value[0] : value;
+  return v && /^[\w.-]{1,100}$/.test(v) ? v : null;
+}
+
 const STATE_CHANGING = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 const ADMIN_ROLES = new Set(['super_admin', 'admin']);
 const MANAGER_ROLES = new Set(['super_admin', 'admin', 'manager']);
@@ -136,8 +142,11 @@ export function registerAccess(
               paired_at: Date;
               revoked_at: Date | null;
               company_status: string;
+              app_version: string | null;
+              default_dialer: string | null;
             }>`
-              select d.id, d.employee_id, d.company_id, d.paired_at, d.revoked_at, co.status as company_status
+              select d.id, d.employee_id, d.company_id, d.paired_at, d.revoked_at, co.status as company_status,
+                     d.app_version, d.default_dialer
               from devices d join companies co on co.id = d.company_id
               where d.token_hash = ${hashToken(token)}
             `.execute(db)
@@ -150,6 +159,16 @@ export function registerAccess(
       if (!deviceLimiter.allow(device.id, now().getTime())) {
         reply.header('retry-after', '60');
         return sendError(reply, 429, 'RATE_LIMITED', 'Too many requests from this phone; it will try again shortly');
+      }
+      // App 0.6.0 sends its version and the phone's current calling app with every request, so the panel shows what
+      // the phone has now, not what it had at pairing. Stored only when it changes.
+      const version = deviceHeader(req.headers['x-app-version']);
+      const dialer = deviceHeader(req.headers['x-default-dialer']);
+      if ((version && version !== device.app_version) || (dialer && dialer !== device.default_dialer)) {
+        await sql`
+          update devices set app_version = ${version ?? device.app_version}, default_dialer = ${dialer ?? device.default_dialer}
+          where id = ${device.id}
+        `.execute(db);
       }
       req.device = {
         deviceId: device.id,

@@ -21,6 +21,7 @@ interface Row {
   model: string | null;
   android_version: string | null;
   app_version: string | null;
+  default_dialer: string | null;
   sim_slot: number | null;
   sim_carrier: string | null;
   paired_at: Date | null;
@@ -40,6 +41,7 @@ const toEmployee = (r: Row): Employee => ({
         model: r.model,
         androidVersion: r.android_version,
         appVersion: r.app_version,
+        defaultDialer: r.default_dialer,
         simSlot: r.sim_slot,
         simCarrier: r.sim_carrier,
         pairedAt: r.paired_at.toISOString(),
@@ -50,7 +52,7 @@ const toEmployee = (r: Row): Employee => ({
 
 const SELECT = sql`
   select e.id, e.name, e.emp_code, e.company_number, e.status, e.created_at,
-         d.brand, d.model, d.android_version, d.app_version, d.sim_slot, d.sim_carrier, d.paired_at, d.last_sync_at
+         d.brand, d.model, d.android_version, d.app_version, d.default_dialer, d.sim_slot, d.sim_carrier, d.paired_at, d.last_sync_at
   from employees e left join devices d on d.employee_id = e.id and d.company_id = e.company_id and d.revoked_at is null
 `;
 

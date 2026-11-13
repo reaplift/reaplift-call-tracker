@@ -1,6 +1,6 @@
 # M10. WhatsApp message templates
 
-- Status: **Design approved in part (12 November 2026):** the client answered W1 to W5; W6 asked again. Nothing built. The order the owner set on 12 November 2026 is: approve the design, write this spec, finish the design, then build.
+- Status: **Built 13 November 2026 (app 0.6.0, server live).** Run end to end on the emulator ([test-evidence.md](test-evidence.md)); real WhatsApp on real phones still to check. W6 used its default: new companies start with no templates. The order the owner set on 12 November 2026 is: approve the design, write this spec, finish the design, then build.
 - Owner: unassigned
 - Starts after: M4 task 4.5 (after-call pop-up and call history screen, built in app 0.5.0)
 - External prerequisites: E1 (test phones with WhatsApp or WhatsApp Business installed)

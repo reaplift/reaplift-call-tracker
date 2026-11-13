@@ -49,12 +49,24 @@ object Tracking {
             Notifications.askForComment(context, call, call.contactName ?: formatNumber(call.number))
         }
 
-        val api = ApiClient(prefs.serverUrl!!, prefs.deviceToken)
+        val api = ApiClient(
+            prefs.serverUrl!!,
+            prefs.deviceToken,
+            deviceInfo = mapOf(
+                "X-App-Version" to com.reaplift.calls.BuildConfig.VERSION_NAME,
+                "X-Default-Dialer" to (Dialers.current(context) ?: ""),
+            ),
+        )
         var result = sync.send(api, System::currentTimeMillis)
         // Comments go after the calls they belong to.
         if (result is SendResult.Done) {
             val comments = CommentSync(db).send(api, System::currentTimeMillis)
             if (comments !is SendResult.Done) result = comments
+        }
+        // WhatsApp sends (M10) after the calls they belong to.
+        if (result is SendResult.Done) {
+            val sends = com.reaplift.calls.whatsapp.MessageSync(db).send(api, System::currentTimeMillis)
+            if (sends !is SendResult.Done) result = sends
         }
         // Recordings (M6) after the calls and comments: they are the slowest to send.
         if (result is SendResult.Done && MediaStoreAudio.hasPermission(context)) {
@@ -85,6 +97,9 @@ object Tracking {
                 db.replaceOutcomes(config.outcomes.map { Outcome(it.id, it.label) })
                 db.replaceNoteTemplates(config.noteTemplates)
                 prefs.neverRecordHashes = config.neverRecord.toSet()
+                db.replaceMessageTemplates(config.messageTemplates.map { com.reaplift.calls.whatsapp.MessageTemplate(it.id, it.title, it.body) })
+                config.employeeName?.takeIf { it.isNotBlank() }?.let { prefs.employeeName = it }
+                config.companyName?.takeIf { it.isNotBlank() }?.let { prefs.companyName = it }
                 db.removeNeverRecord(NeverRecordList(prefs.neverRecordHashes))
                 prefs.lastConfigAt = System.currentTimeMillis()
             }

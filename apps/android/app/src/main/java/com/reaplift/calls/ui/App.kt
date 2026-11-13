@@ -57,6 +57,7 @@ import com.reaplift.calls.data.TrackingState
 import com.reaplift.calls.net.ApiClient
 import com.reaplift.calls.net.ApiException
 import com.reaplift.calls.net.PairRequest
+import com.reaplift.calls.sync.Dialers
 import com.reaplift.calls.sync.MediaStoreAudio
 import com.reaplift.calls.sync.PopupPermission
 import com.reaplift.calls.sync.Notifications
@@ -436,6 +437,19 @@ private fun HomeScreen(prefs: Prefs, onChanged: () -> Unit, onComment: (String) 
             }
         }
     }
+    // Recordings can only be uploaded if the phone's calling app saves them where other apps can read them.
+    val dialer = remember(refresh) { Dialers.current(context) }
+    Dialers.hidingRecordings(dialer)?.let { name ->
+        Card(Modifier.fillMaxWidth()) {
+            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text("Recordings can't be uploaded from $name", fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.error)
+                Text("$name keeps call recordings private, so this app can't send them to your company. Make your phone's own calling app the default, then turn on its automatic call recording.")
+                Button(onClick = { context.startActivity(Dialers.defaultAppsIntent()) }, modifier = Modifier.fillMaxWidth()) {
+                    Text("Change the phone app")
+                }
+            }
+        }
+    }
     OutlinedButton(onClick = {
         scope.launch {
             Tracking.syncNow(context)
@@ -482,7 +496,8 @@ private fun HomeScreen(prefs: Prefs, onChanged: () -> Unit, onComment: (String) 
 
 /** Something on the Status tab needs the employee: tracking paused, recordings or the pop-up not allowed. */
 private fun needsAttention(context: Context, prefs: Prefs) =
-    prefs.state != TrackingState.ON || !MediaStoreAudio.hasPermission(context) || !PopupPermission.granted(context)
+    prefs.state != TrackingState.ON || !MediaStoreAudio.hasPermission(context) || !PopupPermission.granted(context) ||
+        Dialers.hidingRecordings(Dialers.current(context)) != null
 
 private fun startOfToday(): Long {
     val cal = java.util.Calendar.getInstance()

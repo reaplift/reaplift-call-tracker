@@ -64,6 +64,7 @@ export function registerNeverRecordRoutes(app: FastifyInstance, deps: { db: Kyse
           const del = await sql`delete from recordings where company_id = ${companyId} and call_id in (${sql.join(recordings.map((r) => r.call_id))})`.execute(trx);
           deletedRecordings = Number(del.numAffectedRows ?? 0);
         }
+        await sql`delete from message_sends where company_id = ${companyId} and number = ${number}`.execute(trx);
         const calls = await sql`delete from calls where company_id = ${companyId} and number = ${number}`.execute(trx);
         deletedCalls = Number(calls.numAffectedRows ?? 0);
       });

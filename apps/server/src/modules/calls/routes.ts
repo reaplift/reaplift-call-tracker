@@ -7,6 +7,7 @@ import { sendError } from '../../lib/errors.js';
 import { formatIst } from '../../lib/time.js';
 import { scopeSql } from '../auth/scope.js';
 import { FilterError, filterSql, parseCallFilter, type CallFilter } from './filter.js';
+import { sendsForCalls } from '../messages/routes.js';
 
 const DEFAULT_LIMIT = 50;
 const MAX_LIMIT = 500;
@@ -101,8 +102,9 @@ export function registerCallRoutes(app: FastifyInstance, deps: { db: Kysely<Data
       `.execute(db)
     ).rows;
     const items = rows.slice(0, limit);
+    const sends = await sendsForCalls(db, req.scope!.companyId, items.map((r) => r.id));
     const page: Page<CallRow> = {
-      items: items.map(toCallRow),
+      items: items.map((r) => ({ ...toCallRow(r), whatsapp: sends.get(r.id) ?? [] })),
       nextCursor: rows.length > limit ? encodeCursor(items.at(-1)!) : null,
     };
     return reply.code(200).send(page);
@@ -118,8 +120,9 @@ export function registerCallRoutes(app: FastifyInstance, deps: { db: Kysely<Data
     ).rows;
     let body = csvLine([
       'Date and time (IST)', 'Employee', 'Number', 'Contact', 'Type', 'Talk (s)', 'Ring (s)', 'Synced (IST)',
-      'Outcome', 'Comment', 'Follow-up (IST)', 'Recording',
+      'Outcome', 'Comment', 'Follow-up (IST)', 'Recording', 'WhatsApp',
     ]);
+    const sends = await sendsForCalls(db, req.scope!.companyId, rows.map((r) => r.id));
     for (const r of rows) {
       body += csvLine([
         formatIst(r.started_at),
@@ -134,6 +137,7 @@ export function registerCallRoutes(app: FastifyInstance, deps: { db: Kysely<Data
         r.note,
         r.follow_up_at ? formatIst(r.follow_up_at) : '',
         r.recording === 'uploaded' ? 'yes' : r.recording === 'missing' ? 'missing' : '',
+        (sends.get(r.id) ?? []).map((s) => s.title ?? 'WhatsApp').join('; '),
       ]);
     }
     return reply

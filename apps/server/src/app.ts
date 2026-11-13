@@ -18,6 +18,7 @@ import { registerDashboardRoutes } from './modules/reports/dashboard.js';
 import { registerCallyzerRoutes } from './modules/integration/callyzer.js';
 import { registerApiKeyRoutes } from './modules/integration/keys.js';
 import { registerNeverRecordRoutes } from './modules/never-record/routes.js';
+import { registerMessageRoutes } from './modules/messages/routes.js';
 import { isPanelPath, PANEL_CSP, registerPanel } from './modules/panel/routes.js';
 
 declare module 'fastify' {
@@ -119,6 +120,7 @@ export function buildApp({
   registerRecordingRoutes(app, { db, now, store: recordingStore });
   registerApiKeyRoutes(app, { db });
   registerNeverRecordRoutes(app, { db, store: recordingStore });
+  registerMessageRoutes(app, { db, now });
   registerCallyzerRoutes(app, { db, now, store: recordingStore });
   registerInstallRoutes(app, { db, now, publicBaseUrl, apkDir });
   if (panelDir) app.register((instance) => registerPanel(instance, panelDir));

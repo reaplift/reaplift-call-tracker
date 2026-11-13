@@ -1,4 +1,4 @@
-import type { CallOutcome, CallRow, Company, DashboardResponse, Employee, NeverRecordNumber, NoteTemplate, Page, PairingCodeResponse, RecordingPlayResponse } from '@reaplift/calls-shared';
+import type { CallOutcome, CallRow, Company, DashboardResponse, Employee, MessageTemplate, NeverRecordNumber, NoteTemplate, Page, PairingCodeResponse, RecordingPlayResponse } from '@reaplift/calls-shared';
 
 export interface User {
   id: string;
@@ -104,6 +104,11 @@ export const api = {
   /** Super admin: every company, and the one to work in (P1). */
   companies: () => request<{ items: Company[] }>('GET', '/api/companies'),
   selectCompany: (companyId: number) => request<{ user: User }>('PUT', '/api/auth/company', { companyId }),
+  /** M10: WhatsApp message templates (admins). */
+  messageTemplates: () => request<{ items: MessageTemplate[] }>('GET', '/api/message-templates'),
+  addMessageTemplate: (body: { title: string; body: string }) => request<MessageTemplate>('POST', '/api/message-templates', body),
+  updateMessageTemplate: (id: string, body: Partial<{ title: string; body: string; active: boolean }>) =>
+    request<MessageTemplate>('PATCH', `/api/message-templates/${id}`, body),
   /** M12, super admin: numbers whose calls are never recorded or kept. */
   neverRecord: () => request<{ items: NeverRecordNumber[] }>('GET', '/api/never-record-numbers'),
   addNeverRecord: (body: { number: string; label?: string; deletePastCalls?: boolean }) =>

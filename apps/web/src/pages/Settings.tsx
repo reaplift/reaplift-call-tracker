@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent } from 'react';
 import type { NeverRecordNumber } from '@reaplift/calls-shared';
 import { api, ApiError, type ApiKey } from '../api';
 import { formatNumber } from '../format';
+import { MessageTemplates } from './MessageTemplates';
 
 interface Item {
   id: string;
@@ -34,6 +35,7 @@ export function Settings() {
         rename={(id, text) => api.updateNoteTemplate(id, { text })}
         toggle={(id, active) => api.updateNoteTemplate(id, { active })}
       />
+      <MessageTemplates />
       <NeverRecord />
       <ApiKeys />
     </section>

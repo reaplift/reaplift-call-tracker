@@ -137,6 +137,8 @@ An employee has at most one active device; pairing a new phone revokes the old o
 
 | Table | Columns | Milestone |
 | --- | --- | --- |
+| `message_templates` | `id`, `company_id`, `title` (unique per company), `body`, `sort_order`, `active`, `created_by`, `created_at`, `updated_at`. Migration 0010, M10 | M10 |
+| `message_sends` | `id`, `company_id`, `employee_id`, `device_id`, `device_send_id` (unique per device), `template_id`, `number`, `call_id`, `body`, `app` (`whatsapp` or `whatsapp_business`), `opened_at`, `synced_at`. Migration 0010; deleted with a never-record number's past calls | M10 |
 | `never_record_numbers` | `company_id`, `number`, `label`, `created_by`, `created_at`; primary key (`company_id`, `number`). Built 13 November 2026 (migration 0009, M12) | M12 |
 | `api_keys` | `id`, `company_id`, `name`, `key_prefix`, `key_hash unique` (SHA-256), `created_by`, `created_at`, `last_used_at`, `revoked_at`. Built 12 November 2026 (migration 0007) | M5 |
 | `webhooks` | `id`, `url`, `secret_encrypted`, `events text[]`, `enabled`, `created_at` | M5 |
@@ -185,6 +187,7 @@ An employee has at most one active device; pairing a new phone revokes the old o
 | GET, POST, DELETE | `/api/teams`, `/api/excluded-numbers`, `/api/users` | admin | M2 |
 | GET | `/api/devices` (health list) | admin, manager | M4 |
 | POST | `/api/app-releases` | admin | M4 |
+| GET, POST, PATCH | `/api/message-templates` (`PATCH /:id`): WhatsApp templates; blank names must be lowercase letters, digits and underscores (`TEMPLATE_BLANK_INVALID`); at most 50 on (`TOO_MANY_TEMPLATES`); `TEMPLATE_EXISTS`. Built 13 November 2026 | admin | M10 |
 | GET, POST, DELETE | `/api/never-record-numbers` (`POST { number, label?, deletePastCalls? }`; super admin only). Built 13 November 2026 | super admin | M12 |
 | GET, POST, DELETE | `/api/integrations/api-keys` (built 12 November 2026; the key is returned once, from POST), `/api/integrations/webhooks` | admin | M5 |
 | GET | `/api/calls/:id/recording` (returns a 5-minute play link; 410 `RECORDING_EXPIRED` after 365 days, D4). Built 11 November 2026 | admin, manager | M6 |
@@ -202,6 +205,7 @@ An employee has at most one active device; pairing a new phone revokes the old o
 | GET | `/device/v1/leads` | The employee's CRM leads to call | M9 |
 | POST | `/device/v1/recordings/upload-url` | `{ deviceCallId, sizeBytes, mimeType, audioSeconds, matchScore }` → `{ uploadUrl, expiresAt, headers }`; a 15-minute signed PUT link straight to R2. 503 `RECORDINGS_NOT_CONFIGURED` until R2 is set; 409 `RECORDING_EXISTS` | M6 (built) |
 | POST | `/device/v1/recordings/complete` | Confirms the upload; the server checks the object's size in R2 (400 `UPLOAD_NOT_FOUND` if absent) | M6 (built) |
+| POST | `/device/v1/message-sends` | `{ sends: [...] }` up to 50: `{ deviceSendId, templateId, number, deviceCallId, body, app, openedAt }` → `{ accepted, duplicates, rejected }`. Idempotent per device; a never-record number is refused. Every phone request also carries `X-App-Version` and `X-Default-Dialer` (app 0.6.0), stored on the device row when they change | M10 |
 | POST | `/device/v1/recordings/missing` | Marks recordings missing, with the reason (files in the window, best score, folder; never a file name). App 0.5.2 sends `{ items }`, up to 50, and gets `{ saved, notSynced }`; older apps send one call. Never overwrites an upload | M6 (built) |
 
 A revoked device gets 401 `DEVICE_REVOKED` and the app stops syncing and shows "This phone was unpaired".

@@ -1,3 +1,4 @@
+import { DIALERS_HIDING_RECORDINGS } from '@reaplift/calls-shared';
 import { useEffect, useState, type FormEvent } from 'react';
 import type { Employee, PairingCodeResponse } from '@reaplift/calls-shared';
 import { api, ApiError } from '../api';
@@ -108,9 +109,20 @@ export function Employees() {
                 </td>
                 <td>{formatNumber(e.companyNumber)}</td>
                 <td>
-                  {e.device
-                    ? `${e.device.brand ?? ''} ${e.device.model ?? ''} · Android ${e.device.androidVersion ?? '?'} · SIM ${(e.device.simSlot ?? 0) + 1}`
-                    : <span className="muted">Not paired</span>}
+                  {e.device ? (
+                    <>
+                      {`${e.device.brand ?? ''} ${e.device.model ?? ''} · Android ${e.device.androidVersion ?? '?'} · SIM ${(e.device.simSlot ?? 0) + 1}`}
+                      <br />
+                      <span className="muted">App {e.device.appVersion ?? '?'}</span>
+                      {e.device.defaultDialer && DIALERS_HIDING_RECORDINGS[e.device.defaultDialer] && (
+                        <span className="tag warn" title="This calling app keeps recordings private. Ask the employee to make the phone brand's own calling app the default, with auto-record on.">
+                          {DIALERS_HIDING_RECORDINGS[e.device.defaultDialer]}: recordings can't be uploaded
+                        </span>
+                      )}
+                    </>
+                  ) : (
+                    <span className="muted">Not paired</span>
+                  )}
                 </td>
                 <td>{e.device?.lastSyncAt ? formatDateTime(e.device.lastSyncAt) : '—'}</td>
                 <td className="actions">

@@ -90,6 +90,10 @@ fun CallHistoryScreen(refresh: Int, onComment: (String) -> Unit) {
 private fun CallCard(item: LocalCall, onComment: () -> Unit, onPlay: () -> Unit) {
     val context = LocalContext.current
     val call = item.call
+    var whatsAppOpen by remember { mutableStateOf(false) }
+    if (whatsAppOpen) {
+        com.reaplift.calls.whatsapp.WhatsAppDialog(call.number, call.contactName, call.deviceCallId, item.followUpAtMs) { whatsAppOpen = false }
+    }
     Card(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -106,7 +110,7 @@ private fun CallCard(item: LocalCall, onComment: () -> Unit, onPlay: () -> Unit)
             }
             FlowRow(horizontalArrangement = Arrangement.spacedBy(2.dp), verticalArrangement = Arrangement.Center) {
                 TextButton(onClick = { dial(context, call.number) }) { Text("Call", maxLines = 1) }
-                TextButton(onClick = { whatsapp(context, call.number) }) { Text("WhatsApp", maxLines = 1) }
+                TextButton(onClick = { whatsAppOpen = true }) { Text("WhatsApp", maxLines = 1) }
                 when (item.recordingStatus) {
                     "uploaded" -> TextButton(onClick = onPlay) { Text("▶ Play", maxLines = 1) }
                     "missing" -> TextButton(onClick = {}, enabled = false) { Text("No recording", maxLines = 1, color = MaterialTheme.colorScheme.error) }

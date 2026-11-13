@@ -16,6 +16,12 @@
     <!-- The after-call pop-up opens by itself over other apps (client, 12 November 2026); optional, else a notification. -->
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
 
+    <!-- M10: to open WhatsApp or WhatsApp Business with a template, the app must be allowed to see whether they're installed. -->
+    <queries>
+        <package android:name="com.whatsapp" />
+        <package android:name="com.whatsapp.w4b" />
+    </queries>
+
     <application
         android:name=".CallsApp"
         android:allowBackup="false"

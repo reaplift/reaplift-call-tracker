@@ -212,9 +212,9 @@ No contacts permission: the call log already carries the cached contact name.
 - **Call history screen:** the app opens on it. Tabs All, Incoming, Outgoing, Missed; search; calls grouped by day; each card with Call, WhatsApp, ▶ Play when a recording was uploaded, and "Tap here to add notes". It shows company-SIM calls only.
 - **Panel:** each company's admin manages the outcomes and ready-made notes in Settings; phones pick up changes on their next sync.
 
-### 8.9 WhatsApp message templates (M10, design approved in part; not built)
+### 8.9 WhatsApp message templates (M10, built 13 November 2026, app 0.6.0)
 
-The super admin writes fixed templates with blanks. After a call, the employee picks one; the app fills what it knows (client name from the contact, employee and company name, follow-up date) and asks the employee for the rest; the employee reviews it and WhatsApp opens on the client's chat with the text ready. See the M10 spec.
+A company's admins write fixed templates with blanks. After a call, the employee picks one; the app fills what it knows (client name from the contact, employee and company name, follow-up date) and asks the employee for the rest; the employee reviews it and WhatsApp opens on the client's chat with the text ready. See the M10 spec.
 
 ## 9. Data
 

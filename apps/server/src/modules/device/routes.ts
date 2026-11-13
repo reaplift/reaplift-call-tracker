@@ -15,6 +15,7 @@ import { audit } from '../../lib/audit.js';
 import { createSessionToken, hashToken } from '../../lib/auth.js';
 import { sendError } from '../../lib/errors.js';
 import { neverRecordNumbers, numberHash } from '../never-record/routes.js';
+import { activeTemplates } from '../messages/routes.js';
 
 /** A phone's clock may run a little behind the server's: calls this long before pairing still count. */
 export const PAIRING_SLACK_MS = 10 * 60_000;
@@ -117,7 +118,22 @@ export function registerDeviceRoutes(
       `.execute(db)
     ).rows.map((r) => r.text);
     const neverRecord = [...(await neverRecordNumbers(db, req.device!.companyId))].map(numberHash);
-    const body: DeviceConfig = { settings, outcomes, noteTemplates, neverRecord };
+    const who = (
+      await sql<{ employee_name: string; company_name: string }>`
+        select e.name as employee_name, co.name as company_name
+        from employees e join companies co on co.id = e.company_id
+        where e.company_id = ${req.device!.companyId} and e.id = ${req.device!.employeeId}
+      `.execute(db)
+    ).rows[0];
+    const body: DeviceConfig = {
+      settings,
+      outcomes,
+      noteTemplates,
+      neverRecord,
+      messageTemplates: await activeTemplates(db, req.device!.companyId),
+      employeeName: who?.employee_name ?? '',
+      companyName: who?.company_name ?? '',
+    };
     return reply.code(200).send(body);
   });
 

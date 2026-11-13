@@ -183,6 +183,7 @@ export function CallHistory({ preset }: { preset?: { fromDay: string; toDay: str
             <th>Ring</th>
             <th>Outcome and comment</th>
             <th>Recording</th>
+            <th>WhatsApp</th>
           </tr>
         </thead>
         <tbody>
@@ -216,6 +217,13 @@ export function CallHistory({ preset }: { preset?: { fromDay: string; toDay: str
                   ))}
                 {c.recording === 'missing' && <span className="error">Missing</span>}
                 {c.recording === 'pending_upload' && <span className="muted">Uploading…</span>}
+              </td>
+              <td>
+                {(c.whatsapp ?? []).map((w, i) => (
+                  <div key={i} className="wa" title={`Opened WhatsApp ${formatDateTime(w.sentAt)}`}>
+                    {w.title ?? 'Message'}
+                  </div>
+                ))}
               </td>
             </tr>
           ))}

@@ -105,6 +105,8 @@ export interface Employee {
     model: string | null;
     androidVersion: string | null;
     appVersion: string | null;
+    /** The phone's default calling app, kept current by every sync (app 0.6.0). */
+    defaultDialer: string | null;
     simSlot: number | null;
     simCarrier: string | null;
     pairedAt: string;
@@ -175,6 +177,11 @@ export interface DeviceConfig {
   noteTemplates: string[];
   /** M12: SHA-256 (hex) of each never-record number, digits with country code ("919811100000"). Never the number. */
   neverRecord: string[];
+  /** M10: the company's active WhatsApp templates. */
+  messageTemplates: Array<{ id: string; title: string; body: string }>;
+  /** M10: for the {{employee_name}} and {{company_name}} blanks. */
+  employeeName: string;
+  companyName: string;
 }
 
 /** M12: a number whose calls are never recorded or kept (super admin only). */
@@ -231,6 +238,8 @@ export interface CallRow {
   commentedAt: string | null;
   /** M6: null when the phone has not reported on this call's recording yet. */
   recording: RecordingStatus | null;
+  /** M10: WhatsApp templates the employee sent for this call, oldest first. */
+  whatsapp?: Array<{ title: string | null; sentAt: string }>;
 }
 
 export const RECORDING_STATUSES = ['pending_upload', 'uploaded', 'missing'] as const;
@@ -323,3 +332,12 @@ export interface DashboardPeriod {
 export interface DashboardResponse {
   periods: DashboardPeriod[];
 }
+
+/**
+ * Calling apps that keep their call recordings private, so no other app can upload them (found 13 November 2026:
+ * Google Phone on an OPPO, Truecaller on a VERTU). The panel and the app warn about these.
+ */
+export const DIALERS_HIDING_RECORDINGS: Record<string, string> = {
+  'com.google.android.dialer': 'Google Phone',
+  'com.truecaller': 'Truecaller',
+};

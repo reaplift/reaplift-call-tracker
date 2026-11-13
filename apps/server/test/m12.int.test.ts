@@ -158,6 +158,21 @@ describe('calls from before pairing (client, 13 November 2026)', () => {
   });
 });
 
+describe('phone status kept current (app 0.6.0)', () => {
+  it('stores the app version and calling app the phone sends, and the panel shows them', async () => {
+    const send = (headers: Record<string, string>) =>
+      app.inject({ method: 'GET', url: '/device/v1/config', headers: { authorization: `Bearer ${roadsPhone}`, ...headers } });
+    expect((await send({ 'x-app-version': '0.6.0', 'x-default-dialer': 'com.google.android.dialer' })).statusCode).toBe(200);
+    const device = () => sql<{ app_version: string; default_dialer: string }>`select app_version, default_dialer from devices where company_id = 1`.execute(db);
+    expect((await device()).rows[0]).toEqual({ app_version: '0.6.0', default_dialer: 'com.google.android.dialer' });
+    // Anything that isn't a version or package name is ignored.
+    await send({ 'x-app-version': '0.6.0; drop table', 'x-default-dialer': 'com.oplus.dialer' });
+    expect((await device()).rows[0]).toEqual({ app_version: '0.6.0', default_dialer: 'com.oplus.dialer' });
+    const emp = (await admin('GET', '/api/employees')).json().items.find((e: { device: unknown }) => e.device);
+    expect(emp.device).toMatchObject({ appVersion: '0.6.0', defaultDialer: 'com.oplus.dialer' });
+  });
+});
+
 describe('keeping the shared hosting light', () => {
   it('takes up to 50 missing recordings in one request', async () => {
     const res = await phone(roadsPhone)('POST', '/device/v1/recordings/missing', {

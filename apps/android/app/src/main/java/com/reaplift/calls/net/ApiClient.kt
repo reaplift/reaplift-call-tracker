@@ -62,7 +62,34 @@ data class DeviceConfig(
     val noteTemplates: List<String> = emptyList(),
     /** M12: SHA-256 of each never-record number. */
     val neverRecord: List<String> = emptyList(),
+    /** M10: the company's active WhatsApp templates, and the names for the automatic blanks. */
+    val messageTemplates: List<MessageTemplateJson> = emptyList(),
+    val employeeName: String? = null,
+    val companyName: String? = null,
 )
+
+@Serializable
+data class MessageTemplateJson(val id: String, val title: String, val body: String)
+
+@Serializable
+data class MessageSendJson(
+    val deviceSendId: String,
+    val templateId: String?,
+    val number: String,
+    val deviceCallId: String?,
+    val body: String,
+    val app: String,
+    val openedAt: String,
+)
+
+@Serializable
+data class MessageSendBatchJson(val sends: List<MessageSendJson>)
+
+@Serializable
+data class RejectedSendJson(val deviceSendId: String, val reason: String)
+
+@Serializable
+data class MessageSendResultJson(val accepted: Int = 0, val duplicates: Int = 0, val rejected: List<RejectedSendJson> = emptyList())
 
 @Serializable
 data class CommentJson(val outcomeId: String?, val note: String?, val followUpAt: String?)
@@ -143,8 +170,10 @@ fun OutgoingCall.toJson() = CallJson(
 class ApiClient(
     private val serverUrl: String,
     private val token: String? = null,
+    /** Sent with every request (app 0.6.0): the app version and the phone's current calling app. */
+    private val deviceInfo: Map<String, String> = emptyMap(),
     private val client: OkHttpClient = OkHttpClient.Builder().callTimeout(30, TimeUnit.SECONDS).build(),
-) : CallUploader, CommentUploader {
+) : CallUploader, CommentUploader, com.reaplift.calls.whatsapp.SendUploader {
     private val base = serverUrl.trimEnd('/')
     private val jsonType = "application/json".toMediaType()
 
@@ -152,6 +181,7 @@ class ApiClient(
         withContext(Dispatchers.IO) {
             val builder = Request.Builder().url(base + path)
             token?.let { builder.header("Authorization", "Bearer $it") }
+            deviceInfo.forEach { (name, value) -> if (value.isNotBlank()) builder.header(name, value) }
             builder.method(method, body?.toRequestBody(jsonType))
             client.newCall(builder.build()).execute().use { response ->
                 val text = response.body?.string().orEmpty()
@@ -187,6 +217,15 @@ class ApiClient(
         )
         return call("POST", "/device/v1/recordings/missing", json.encodeToString(body)) {
             json.decodeFromString<RecordingMissingBatchResult>(it).notSynced.toSet()
+        }
+    }
+
+    override suspend fun uploadSends(sends: List<com.reaplift.calls.whatsapp.PendingSend>): Set<String> {
+        val body = MessageSendBatchJson(
+            sends.map { MessageSendJson(it.deviceSendId, it.templateId, it.number, it.deviceCallId, it.body, it.app, Instant.ofEpochMilli(it.openedAtMs).toString()) },
+        )
+        return call("POST", "/device/v1/message-sends", json.encodeToString(body)) {
+            json.decodeFromString<MessageSendResultJson>(it).rejected.map { r -> r.deviceSendId }.toSet()
         }
     }
 
