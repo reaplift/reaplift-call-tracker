@@ -14,6 +14,7 @@ import { registerNoteTemplateRoutes } from './modules/outcomes/templates.js';
 import { registerRecordingRoutes } from './modules/recordings/routes.js';
 import type { RecordingStore } from './lib/storage.js';
 import { registerReportsRoutes } from './modules/reports/routes.js';
+import { registerDashboardRoutes } from './modules/reports/dashboard.js';
 import { registerCallyzerRoutes } from './modules/integration/callyzer.js';
 import { registerApiKeyRoutes } from './modules/integration/keys.js';
 import { isPanelPath, PANEL_CSP, registerPanel } from './modules/panel/routes.js';
@@ -110,6 +111,7 @@ export function buildApp({
   registerDeviceRoutes(app, { db, now, settings: deviceSettings });
   registerCallRoutes(app, { db, now });
   registerReportsRoutes(app, { db, now });
+  registerDashboardRoutes(app, { db, now });
   registerOutcomeRoutes(app, { db });
   registerNoteTemplateRoutes(app, { db });
   registerRecordingRoutes(app, { db, now, store: recordingStore });

@@ -179,6 +179,7 @@ An employee has at most one active device; pairing a new phone revokes the old o
 | POST | `/api/employees/:id/revoke-device` | admin | M1 |
 | GET | `/api/calls` (call filter) | admin; manager from M2 | M1 |
 | GET | `/api/calls/export.csv` (call filter) | admin; manager from M2 | M1 |
+| GET | `/api/reports/dashboard`: today, yesterday, the last 7 days and this month, each with the 13 dashboard figures (built 12 November 2026, M2 task 2.7; same report functions as the CRM API) | admin, manager | M2 |
 | GET | `/api/reports/summary`, `/employees`, `/analysis`, `/never-attended`, `/not-picked-up`, `/unique-numbers`, `/hourly`, `/daywise` (call filter) | admin, manager | M2 |
 | GET, POST, DELETE | `/api/teams`, `/api/excluded-numbers`, `/api/users` | admin | M2 |
 | GET | `/api/devices` (health list) | admin, manager | M4 |

@@ -32,3 +32,18 @@ export function istDateString(at: Date): string {
 
 /** The start of an India-time day as an ISO instant. */
 export const istDayStart = (yyyyMmDd: string) => new Date(`${yyyyMmDd}T00:00:00+05:30`).toISOString();
+
+/** Durations on the dashboard, as Callyzer shows them: 5247 gives "1h 27m 27s", 431 gives "0h 7m 11s". */
+export function formatDuration(s: number): string {
+  const total = Math.max(0, Math.round(s));
+  return `${Math.floor(total / 3600)}h ${Math.floor((total % 3600) / 60)}m ${total % 60}s`;
+}
+
+/** "12 Nov 2026", or "05 to 11 Nov 2026" for a range, from India dates (yyyy-mm-dd). */
+export function formatDayRange(first: string, last: string): string {
+  const fmt = (d: string, withYear: boolean) =>
+    new Intl.DateTimeFormat('en-GB', { timeZone: 'UTC', day: '2-digit', month: 'short', ...(withYear ? { year: 'numeric' } : {}) }).format(new Date(`${d}T00:00:00Z`));
+  if (first === last) return fmt(first, true);
+  const sameMonth = first.slice(0, 7) === last.slice(0, 7);
+  return `${sameMonth ? first.slice(8, 10) : fmt(first, false)} to ${fmt(last, true)}`;
+}

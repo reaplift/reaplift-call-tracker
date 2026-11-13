@@ -251,3 +251,31 @@ export interface Page<T> {
   items: T[];
   nextCursor: string | null;
 }
+
+/** One card on the panel's dashboard (M2 task 2.7). Durations are seconds; `to` is exclusive. */
+export interface DashboardPeriod {
+  key: 'today' | 'yesterday' | 'last7' | 'month';
+  label: string;
+  /** India-time dates the card covers, inclusive: "2026-11-05" to "2026-11-11". */
+  firstDay: string;
+  lastDay: string;
+  from: string;
+  to: string;
+  totalCalls: number;
+  callSeconds: number;
+  incomingCalls: number;
+  incomingSeconds: number;
+  outgoingCalls: number;
+  outgoingSeconds: number;
+  missedCalls: number;
+  rejectedCalls: number;
+  neverAttended: number;
+  notPickedUp: number;
+  uniqueClients: number;
+  workingSeconds: number;
+  connectedCalls: number;
+}
+
+export interface DashboardResponse {
+  periods: DashboardPeriod[];
+}

@@ -39,7 +39,7 @@ h3 { font-size: 15px; margin: 0; }
 .cap { font-size: 12px; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); margin: 0 0 10px; }
 
 /* dashboard */
-.dash { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+.dash { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 14px; }
 .period { border: 1px solid var(--line); border-radius: 10px; padding: 16px; min-width: 0; }
 .period h3 { font-size: 20px; display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
 .period h3 small { font-size: 12px; font-weight: 400; color: var(--muted); }
@@ -172,7 +172,7 @@ button.btn:focus-visible { outline: 2px solid var(--fg); outline-offset: 2px; }
 
   <section aria-labelledby="d">
     <h2 id="d">1. The panel, with the new Dashboard first</h2>
-    <p class="intent">Click the tabs to see every page. The Dashboard has three cards (Today, Yesterday, Last week) with the same 13 numbers Callyzer shows; click any number to see the calls behind it. Managers see only their teams. The numbers come from the same code as the CRM API, so the panel and the CRM always agree.</p>
+    <p class="intent">Click the tabs to see every page. The Dashboard has four cards (Today, Yesterday, Last 7 days, This month) with the same 13 numbers Callyzer shows; click any number to see the calls behind it. Managers see only their teams. The numbers come from the same code as the CRM API, so the panel and the CRM always agree.</p>
     <div class="legend"><span><span class="badge built">Built</span> already in the panel today</span><span><span class="badge new">New</span> proposed, built after approval</span></div>
     <div class="frame">
       <p class="cap">Panel · sample data</p>
@@ -224,7 +224,7 @@ button.btn:focus-visible { outline: 2px solid var(--fg); outline-offset: 2px; }
           </div>
         </div>
         <div class="period">
-          <h3>Last week <small>02 to 08 Nov 2026</small></h3>
+          <h3>Last 7 days <small>05 to 11 Nov 2026</small></h3>
           <div class="tiles">
             <a class="tile" href="#d"><b>178</b><span>Total calls</span></a>
             <a class="tile" href="#d"><b>2h 26m 24s</b><span>Call duration</span></a>
@@ -350,13 +350,140 @@ button.btn:focus-visible { outline: 2px solid var(--fg); outline-offset: 2px; }
           <div class="card"><h4>API keys for your CRM <span class="badge built">Built</span></h4><p class="m">Your CRM reads calls from callit.reaplift.com/api/v2.3/.</p>
             <div class="list"><div><span>Our CRM · rlk_NB4x…</span><span>Used 2 min ago</span></div></div><div class="row"><span class="btn ghost">Create key</span></div></div>
         </div>
+        <div class="period">
+          <h3>This month <small>01 to 12 Nov 2026</small></h3>
+          <div class="tiles">
+            <a class="tile" href="#d"><b>301</b><span>Total calls</span></a>
+            <a class="tile" href="#d"><b>4h 12m 05s</b><span>Call duration</span></a>
+            <a class="tile in" href="#d"><b>96</b><span>Incoming</span></a>
+            <a class="tile in" href="#d"><b>1h 51m 30s</b><span>Incoming duration</span></a>
+            <a class="tile out" href="#d"><b>168</b><span>Outgoing</span></a>
+            <a class="tile out" href="#d"><b>2h 20m 35s</b><span>Outgoing duration</span></a>
+            <a class="tile bad" href="#d"><b>17</b><span>Missed</span></a>
+            <a class="tile bad" href="#d"><b>20</b><span>Rejected</span></a>
+            <a class="tile bad" href="#d"><b>9</b><span>Never attended</span></a>
+            <a class="tile bad" href="#d"><b>14</b><span>Not picked up by client</span></a>
+            <a class="tile" href="#d"><b>61</b><span>Unique clients</span></a>
+            <a class="tile" href="#d"><b>9h 40m 12s</b><span>Working hours</span></a>
+            <a class="tile" href="#d"><b>207</b><span>Connected calls</span></a>
+          </div>
+        </div>
+      </div>
+
+      </div>
+
+      <div role="tabpanel" id="v-calls" aria-labelledby="t-calls" hidden>
+        <div class="view-head"><h3>Call history <span class="badge built">Built</span></h3><span class="btn ghost">Download CSV</span></div>
+        <div class="filters">
+          <label class="field">From<div class="input">12 Nov 2026</div></label>
+          <label class="field">To<div class="input">12 Nov 2026</div></label>
+          <label class="field">Employee<div class="input">Everyone</div></label>
+          <label class="field">Type<div class="input">All</div></label>
+          <label class="field">Talk at least (s)<div class="input">&nbsp;</div></label>
+          <label class="field">Ring at least (s)<div class="input">&nbsp;</div></label>
+          <label class="field">Number<div class="input">&nbsp;</div></label>
+          <label class="field">Comment<div class="input">All calls</div></label>
+          <label class="field">Recording<div class="input">All calls</div></label>
+          <label class="field">WhatsApp <span class="badge new">New</span><div class="input">All calls</div></label>
+        </div>
+        <div class="tablewrap"><table>
+          <thead><tr><th>Date and time</th><th>Employee</th><th>Number</th><th>Type</th><th>Talk</th><th>Ring</th><th>Outcome and comment</th><th>Recording</th><th>WhatsApp <span class="badge new">New</span></th></tr></thead>
+          <tbody>
+            <tr><td>12 Nov, 2:00 pm</td><td>Meena Iyer</td><td>99000 44444</td><td class="t-out">Outgoing</td><td>0s</td><td>30s</td><td class="wrap"><span class="warn">Waiting for a comment</span></td><td>—</td><td>—</td></tr>
+            <tr><td>12 Nov, 1:00 pm</td><td>Meena Iyer</td><td>99000 33333</td><td class="t-bad">Missed</td><td>0s</td><td>15s</td><td class="wrap"><b>Call back later</b> · Was driving, call after 6</td><td>—</td><td>—</td></tr>
+            <tr><td>12 Nov, 12:00 pm</td><td>Ravi Kumar</td><td>99000 22222</td><td class="t-in">Incoming</td><td>1m 0s</td><td>5s</td><td class="wrap"><b>Interested</b> · Wants price list</td><td><span class="play">▶ Play</span></td><td><span class="wa-mark">Welcome</span></td></tr>
+            <tr><td>12 Nov, 11:00 am</td><td>Meena Iyer</td><td>Asha Builders<br><span style="color:var(--muted);font-size:12px">99000 11111</span></td><td class="t-out">Outgoing</td><td>3m 5s</td><td>8s</td><td class="wrap"><b>Interested</b> · Site visit planned · follow up 13 Nov</td><td><span class="play">▶ Play</span></td><td><span class="wa-mark">Follow-up</span></td></tr>
+          </tbody>
+        </table></div>
+      </div>
+
+      <div role="tabpanel" id="v-reports" aria-labelledby="t-reports" hidden>
+        <div class="view-head"><h3>Reports <span class="badge built">Summary built</span><span class="badge new">Other tabs new</span></h3></div>
+        <div class="row" style="margin-bottom:12px"><span class="mini sel">Summary</span><span class="mini">Employees</span><span class="mini">Analysis</span><span class="mini">Never attended</span><span class="mini">Not picked up</span><span class="mini">Unique clients</span><span class="mini">Hourly</span><span class="mini">Day-wise</span></div>
+        <div class="filters">
+          <label class="field">From<div class="input">02 Nov 2026</div></label>
+          <label class="field">To<div class="input">08 Nov 2026</div></label>
+          <label class="field">Team <span class="badge new">New</span><div class="input">All teams</div></label>
+          <label class="field">Employee<div class="input">Everyone</div></label>
+          <label class="field">Excluded numbers<div class="input">Left out</div></label>
+        </div>
+        <div class="tablewrap"><table>
+          <thead><tr><th>Employee</th><th>Calls</th><th>Connected</th><th>Talk</th><th>Never attended</th><th>Not picked up</th><th>Working hours</th></tr></thead>
+          <tbody>
+            <tr><td>Meena Iyer</td><td>96</td><td>71</td><td>1h 18m</td><td>3</td><td>5</td><td>21h 40m</td></tr>
+            <tr><td>Ravi Kumar</td><td>82</td><td>51</td><td>1h 8m</td><td>2</td><td>3</td><td>19h 12m</td></tr>
+          </tbody>
+        </table></div>
+        <p class="m" style="color:var(--muted);font-size:13px">Every number opens the calls behind it. CSV and PDF download per tab.</p>
+      </div>
+
+      <div role="tabpanel" id="v-emp" aria-labelledby="t-emp" hidden>
+        <div class="view-head"><h3>Employees <span class="badge built">Built</span></h3></div>
+        <div class="formrow">
+          <label class="field">Name<div class="input">&nbsp;</div></label>
+          <label class="field">Employee code<div class="input">&nbsp;</div></label>
+          <label class="field">Company SIM number<div class="input">&nbsp;</div></label>
+          <span class="btn">Add employee</span>
+        </div>
+        <div class="tablewrap"><table>
+          <thead><tr><th>Name</th><th>Company SIM</th><th>Team <span class="badge new">New</span></th><th>Phone</th><th>App</th><th>Last sync</th><th></th></tr></thead>
+          <tbody>
+            <tr><td>Meena Iyer <span style="color:var(--muted)">CR-7</span></td><td>98765 00000</td><td>North</td><td>vivo I2221 · Android 16</td><td>0.5.0</td><td class="ok">2 min ago</td><td><span class="btn ghost">Unpair</span></td></tr>
+            <tr><td>Ravi Kumar <span style="color:var(--muted)">CR-9</span></td><td>98123 45678</td><td>North</td><td>TECNO LH8n · Android 14</td><td>0.3.0 <span class="warn">update</span></td><td class="warn">3 h ago</td><td><span class="btn ghost">Unpair</span></td></tr>
+            <tr><td>Arjun Rao</td><td>98765 11111</td><td>South</td><td style="color:var(--muted)">Not paired</td><td>—</td><td>—</td><td><span class="btn ghost">Pairing code</span></td></tr>
+          </tbody>
+        </table></div>
+      </div>
+
+      <div role="tabpanel" id="v-teams" aria-labelledby="t-teams" hidden>
+        <div class="view-head"><h3>Teams <span class="badge new">New page</span></h3><button class="btn" data-open="dlg-team">Add team</button></div>
+        <p class="m" style="color:var(--muted);font-size:13px;margin:0 0 12px">Managers see only the calls and reports of their own teams. Click the buttons to see each form.</p>
+        <div class="cards2">
+          <div class="card">
+            <h4>North</h4>
+            <p class="m">Managers</p>
+            <div class="list"><div class="member" style="border:none;padding:0"><span>Vikram Rao <span style="color:var(--muted);font-size:12px">vikram@countryroads.in</span></span><button type="button" aria-label="Remove Vikram Rao from North">Remove</button></div></div>
+            <p class="m">Employees (2)</p>
+            <div>
+              <div class="member"><span>Meena Iyer <span style="color:var(--muted);font-size:12px">98765 00000</span></span><button type="button" aria-label="Remove Meena Iyer from North">Remove</button></div>
+              <div class="member"><span>Ravi Kumar <span style="color:var(--muted);font-size:12px">98123 45678</span></span><button type="button" aria-label="Remove Ravi Kumar from North">Remove</button></div>
+            </div>
+            <div class="row"><button class="btn ghost" data-open="dlg-emp">Add employee</button><button class="btn ghost" data-open="dlg-mgr">Add manager</button><button class="btn ghost" data-open="dlg-del">Delete team</button></div>
+          </div>
+          <div class="card">
+            <h4>South</h4>
+            <p class="m">Managers</p>
+            <div><div class="member" style="border:none;padding:0"><span>Deepa Nair <span style="color:var(--muted);font-size:12px">deepa@countryroads.in</span></span><button type="button" aria-label="Remove Deepa Nair from South">Remove</button></div></div>
+            <p class="m">Employees (1)</p>
+            <div><div class="member"><span>Arjun Rao <span style="color:var(--muted);font-size:12px">98765 11111</span></span><button type="button" aria-label="Remove Arjun Rao from South">Remove</button></div></div>
+            <div class="row"><button class="btn ghost" data-open="dlg-emp">Add employee</button><button class="btn ghost" data-open="dlg-mgr">Add manager</button><button class="btn ghost" data-open="dlg-del">Delete team</button></div>
+          </div>
+        </div>
+      </div>
+
+      <div role="tabpanel" id="v-set" aria-labelledby="t-set" hidden>
+        <div class="view-head"><h3>Settings</h3></div>
+        <div class="cards2">
+          <div class="card"><h4>Call outcomes <span class="badge built">Built</span></h4><p class="m">What the employee picks after a call.</p>
+            <div class="list"><div><span>Interested</span><span>On</span></div><div><span>Call back later</span><span>On</span></div><div><span>Not interested</span><span>On</span></div><div><span>Wrong number</span><span>On</span></div></div></div>
+          <div class="card"><h4>Ready-made notes <span class="badge built">Built</span></h4><p class="m">Inserted by typing "/" in the after-call note.</p>
+            <div class="list"><div><span>Site visit planned</span><span>On</span></div><div><span>Asked to call back later</span><span>On</span></div><div><span>Not reachable</span><span>On</span></div></div></div>
+          <div class="card"><h4>WhatsApp message templates <span class="badge new">New</span></h4><p class="m">Fixed messages the employee sends after a call. Editor shown in part 2 below.</p>
+            <div class="list"><div><span>Welcome</span><span>On</span></div><div><span>Follow-up</span><span>On</span></div><div><span>Not interested (keep in touch)</span><span>Off</span></div></div></div>
+          <div class="card"><h4>Excluded numbers <span class="badge new">New page</span></h4><p class="m">Office lines and colleagues, left out of reports.</p>
+            <div class="list"><div><span>040 4000 1000</span><span>Office</span></div></div><div class="row"><span class="btn ghost">Add number</span></div></div>
+          <div class="card"><h4>Users <span class="badge new">New page</span></h4><p class="m">Admins and managers who log in to this panel.</p>
+            <div class="list"><div><span>admin@countryroads.in</span><span>Admin</span></div><div><span>vikram@countryroads.in</span><span>Manager</span></div></div><div class="row"><span class="btn ghost">Add user</span></div></div>
+          <div class="card"><h4>API keys for your CRM <span class="badge built">Built</span></h4><p class="m">Your CRM reads calls from callit.reaplift.com/api/v2.3/.</p>
+            <div class="list"><div><span>Our CRM · rlk_NB4x…</span><span>Used 2 min ago</span></div></div><div class="row"><span class="btn ghost">Create key</span></div></div>
+        </div>
       </div>
     </div>
-    <h3>To decide</h3>
+    <h3>Decided</h3>
     <div class="decisions">
-      <div class="q"><span class="id">D1</span><div><p>Is "Last week" the previous Monday to Sunday, or the last 7 days?</p><p class="def">Proposed: Monday to Sunday, as Callyzer shows it.</p></div></div>
-      <div class="q"><span class="id">D2</span><div><p>Add a fourth card for "This month"?</p><p class="def">Proposed: no, three cards as in the screenshot.</p></div></div>
-      <div class="q"><span class="id">D3</span><div><p>Should the dashboard replace Call history as the first page after login?</p><p class="def">Proposed: yes.</p></div></div>
+      <div class="q"><span class="id">D1</span><div><p>Is "Last week" the previous Monday to Sunday, or the last 7 days?</p><p class="def"><b class="ok">Decided 12 Nov:</b> the last 7 days, meaning the 7 full days before today, so it doesn't overlap Today.</p></div></div>
+      <div class="q"><span class="id">D2</span><div><p>Add a fourth card for "This month"?</p><p class="def"><b class="ok">Decided 12 Nov:</b> yes, from the 1st of the month to today.</p></div></div>
+      <div class="q"><span class="id">D3</span><div><p>Should the dashboard replace Call history as the first page after login?</p><p class="def"><b class="ok">Decided 12 Nov:</b> yes. Call history stays as the next tab.</p></div></div>
     </div>
   </section>
 

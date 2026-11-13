@@ -39,13 +39,14 @@ export function toQuery(f: Filters): CallQuery {
   };
 }
 
-export function CallHistory() {
+/** `preset` comes from a dashboard tile: that card's days and call type. */
+export function CallHistory({ preset }: { preset?: { fromDay: string; toDay: string; type: string } } = {}) {
   const today = istDateString(new Date());
   const [filters, setFilters] = useState<Filters>({
-    fromDay: today,
-    toDay: today,
+    fromDay: preset?.fromDay ?? today,
+    toDay: preset?.toDay ?? today,
     employeeId: '',
-    type: '',
+    type: preset?.type ?? '',
     minTalk: '',
     maxTalk: '',
     minRing: '',

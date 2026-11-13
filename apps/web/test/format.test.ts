@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatNumber, formatSeconds, istDateString } from '../src/format';
+import { formatDayRange, formatDuration, formatNumber, formatSeconds, istDateString } from '../src/format';
 import { toQuery } from '../src/pages/CallHistory';
 
 describe('format', () => {
@@ -24,5 +24,18 @@ describe('format', () => {
     const q = toQuery({ fromDay: '2026-11-12', toDay: '2026-11-12', employeeId: '', type: '', minTalk: '', maxTalk: '', minRing: '', maxRing: '', number: '' });
     expect(q.from).toBe('2026-11-11T18:30:00.000Z');
     expect(q.to).toBe('2026-11-12T18:30:00.000Z');
+  });
+
+  it('shows dashboard durations as Callyzer does', () => {
+    expect(formatDuration(5247)).toBe('1h 27m 27s');
+    expect(formatDuration(431)).toBe('0h 7m 11s');
+    expect(formatDuration(0)).toBe('0h 0m 0s');
+    expect(formatDuration(100 * 3600 + 59)).toBe('100h 0m 59s');
+  });
+
+  it('names a card’s days', () => {
+    expect(formatDayRange('2026-11-12', '2026-11-12')).toBe('12 Nov 2026');
+    expect(formatDayRange('2026-11-05', '2026-11-11')).toBe('05 to 11 Nov 2026');
+    expect(formatDayRange('2026-10-29', '2026-11-04')).toBe('29 Oct to 04 Nov 2026');
   });
 });

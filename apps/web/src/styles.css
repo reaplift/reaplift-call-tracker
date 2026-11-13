@@ -50,3 +50,16 @@ td.actions { display: flex; gap: 6px; flex-wrap: wrap; }
   table { display: block; overflow-x: auto; }
 }
 .notice { border: 1px solid var(--brand); border-radius: 8px; padding: 8px 12px; margin: 8px 0; }
+
+/* Dashboard (M2 task 2.7): four cards of 13 tiles, wrapping on narrow screens. */
+.dash { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 14px; }
+.period h2 { margin: 0 0 12px; font-size: 20px; display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.period h2 small { font-size: 12px; font-weight: 400; color: var(--muted); }
+.tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.tile { display: grid; gap: 2px; text-align: left; background: var(--bg); color: var(--text); border: 1px solid transparent; border-radius: 8px; padding: 8px 10px; cursor: pointer; font: inherit; min-width: 0; }
+.tile:hover, .tile:focus-visible { border-color: var(--brand); outline: none; }
+.tile b { font-size: 17px; font-variant-numeric: tabular-nums; }
+.tile span { font-size: 12.5px; color: var(--muted); }
+.tile.in span { color: #1e8a4c; }
+.tile.out span { color: #c56a00; }
+.tile.bad span { color: var(--error); }

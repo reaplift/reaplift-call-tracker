@@ -1,4 +1,4 @@
-import type { CallOutcome, CallRow, Employee, NoteTemplate, Page, PairingCodeResponse, RecordingPlayResponse } from '@reaplift/calls-shared';
+import type { CallOutcome, CallRow, DashboardResponse, Employee, NoteTemplate, Page, PairingCodeResponse, RecordingPlayResponse } from '@reaplift/calls-shared';
 
 export interface User {
   id: string;
@@ -101,5 +101,7 @@ export const api = {
   apiKeys: () => request<{ items: ApiKey[] }>('GET', '/api/integrations/api-keys'),
   createApiKey: (name: string) => request<ApiKey & { key: string }>('POST', '/api/integrations/api-keys', { name }),
   revokeApiKey: (id: string) => request<void>('DELETE', `/api/integrations/api-keys/${id}`),
+  /** Today, yesterday, the last 7 days and this month (M2 task 2.7). */
+  dashboard: () => request<DashboardResponse>('GET', '/api/reports/dashboard'),
   reportSummary: (q: CallQuery) => request<ReportSummary>('GET', `/api/reports/summary?${callQueryString(q)}`),
 };
