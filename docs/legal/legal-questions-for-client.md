@@ -2,7 +2,7 @@
 
 From ReapLift, 13 November 2026.
 
-Callit is now being tested by a few of your employees through an app file we send them. Before all your employees use it, and before we put it on the Google Play Store, your legal team needs to answer the questions below and approve a few documents. This is a list of questions for your lawyers. It is not legal advice.
+Before your employees start using Callit and we publish it on the Google Play Store, your legal team needs to answer the questions below and approve a few documents. This is a list of questions for your lawyers. It is not legal advice.
 
 ## Who is who
 
@@ -59,7 +59,7 @@ India's data protection law (the Digital Personal Data Protection Act, 2023) tre
 17. Employees will send ready-made messages from their own WhatsApp to customers they have just spoken to. Must the customer agree to receive WhatsApp messages first? Are there messages we should avoid, such as offers and promotions?
 18. Should employees use a WhatsApp Business account on the company SIM, instead of their personal WhatsApp?
 
-## 6. Moving from the app file to the Play Store
+## 6. Publishing on the Play Store
 
 19. Google only lets an app read a phone's call history if it has a good reason and Google approves it. We'd explain that Callit is a work tool for tracking business calls, and show Google a short video of the app. Should the app be published under **your company's name** or **ReapLift's**? Google asks a company publishing apps for its official business registration details.
 20. Google requires a **public privacy policy** and a form listing what data the app collects and who it's shared with. We can draft both. Who in your company approves them?
