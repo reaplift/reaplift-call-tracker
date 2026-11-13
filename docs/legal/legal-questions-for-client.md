@@ -4,6 +4,8 @@ From ReapLift, 13 November 2026.
 
 Before your employees start using Callit and we publish it on the Google Play Store, your legal team needs to answer the questions below and approve a few documents. This is a list of questions for your lawyers. It is not legal advice.
 
+In this document, **"you" and "your company" mean the company whose employees use Callit**, not ReapLift.
+
 ## Who is who
 
 | Who | What they do in Callit |
@@ -69,11 +71,11 @@ India's data protection law (the Digital Personal Data Protection Act, 2023) tre
 
 | Document | Who writes it | Who approves it |
 | --- | --- | --- |
-| Agreement between your company and ReapLift, including how we handle your data | ReapLift and your legal team | Both companies |
-| Company SIM policy, signed by each employee | Your legal team or HR | Your legal team |
-| The message the app shows employees before tracking | ReapLift | Your legal team |
-| The line employees say to customers, and your website's privacy page | Your legal team | Your legal team |
-| Callit's privacy policy and the Play Store data form | ReapLift | Your legal team |
-| How long to keep recordings, call details, and leavers' data | Your legal team | Your management |
+| Agreement between your company and ReapLift, including how we handle your data | ReapLift drafts, your company's legal team reviews | Both companies |
+| Company SIM policy, signed by each employee | Your company's legal team or HR | Your company's legal team |
+| The message the app shows employees before tracking | ReapLift | Your company's legal team |
+| The line employees say to customers, and your website's privacy page | Your company's legal team | Your company's legal team |
+| Callit's privacy policy and the Play Store data form | ReapLift | Your company's legal team |
+| How long to keep recordings, call details, and leavers' data | Your company's legal team | Your company's management |
 
-When these are approved, we'll put the final wording into the app, keep a record of each employee's signed policy and agreement, and send the app to Google for the Play Store.
+When these are approved, ReapLift will put the final wording into the app, keep a record of each employee's signed policy and agreement, and send the app to Google for the Play Store.
