@@ -8,7 +8,7 @@ import { DEVICE_PER_MINUTE } from '../src/modules/auth/access.js';
 import { createUser } from '../src/modules/auth/users.js';
 import { freshDb } from './support/db.js';
 
-// M12: numbers whose calls are never recorded or kept. The super admin lists them; phones get hashes and drop the
+// M12: numbers whose calls are never recorded or kept. A company's admins (or the super admin) list them; phones get hashes and drop the
 // calls; the server refuses any that still arrive and can delete past calls with their recordings.
 // Also the phone limits that keep shared hosting from being overloaded.
 
@@ -38,6 +38,7 @@ const as = (email: string) => (method: 'GET' | 'POST' | 'PUT' | 'DELETE', url: s
 const superAdmin = as('super@reaplift.test');
 const admin = as('admin@roads.test');
 const bsnl = as('admin@bsnl.test');
+const manager = as('manager@roads.test');
 const phone = (token: string) => (method: 'GET' | 'POST', url: string, payload?: object) =>
   app.inject({ method, url, payload, headers: { authorization: `Bearer ${token}` } });
 
@@ -66,7 +67,8 @@ beforeAll(async () => {
   await createUser(db, { email: 'super@reaplift.test', name: 'ReapLift', role: 'super_admin', companyId: null, password: PASSWORD });
   await createUser(db, { email: 'admin@roads.test', name: 'Roads admin', role: 'admin', companyId: 1, password: PASSWORD });
   await createUser(db, { email: 'admin@bsnl.test', name: 'BSNL admin', role: 'admin', companyId: 4, password: PASSWORD });
-  for (const e of ['super@reaplift.test', 'admin@roads.test', 'admin@bsnl.test']) await login(e);
+  await createUser(db, { email: 'manager@roads.test', name: 'Roads manager', role: 'manager', companyId: 1, password: PASSWORD });
+  for (const e of ['super@reaplift.test', 'admin@roads.test', 'admin@bsnl.test', 'manager@roads.test']) await login(e);
   expect((await superAdmin('PUT', '/api/auth/company', { companyId: 1 })).statusCode).toBe(200);
   roadsPhone = await pair(admin, '9876500000');
   bsnlPhone = await pair(bsnl, '9812345678');
@@ -87,21 +89,26 @@ afterAll(async () => {
 });
 
 describe('the never-record list', () => {
-  it('only the super admin can see or change it', async () => {
-    expect((await admin('GET', '/api/never-record-numbers')).statusCode).toBe(403);
-    expect((await admin('POST', '/api/never-record-numbers', { number: DIRECTOR })).statusCode).toBe(403);
+  it('a company admin and the super admin can use it; managers cannot; each company has its own', async () => {
+    expect((await admin('GET', '/api/never-record-numbers')).json()).toEqual({ items: [] });
     expect((await superAdmin('GET', '/api/never-record-numbers')).json()).toEqual({ items: [] });
+    expect((await manager('GET', '/api/never-record-numbers')).statusCode).toBe(403);
+    expect((await manager('POST', '/api/never-record-numbers', { number: DIRECTOR })).statusCode).toBe(403);
+    const added = await bsnl('POST', '/api/never-record-numbers', { number: '9700011111', label: 'BSNL office' });
+    expect(added.statusCode).toBe(201);
+    expect((await admin('GET', '/api/never-record-numbers')).json().items).toEqual([]);
+    expect((await bsnl('DELETE', '/api/never-record-numbers/919700011111')).statusCode).toBe(204);
   });
 
   it('adding a number with "delete past calls" removes the stored call and its recording', async () => {
-    const res = await superAdmin('POST', '/api/never-record-numbers', { number: '+91 98111 00000', label: 'Director', deletePastCalls: true });
+    const res = await admin('POST', '/api/never-record-numbers', { number: '+91 98111 00000', label: 'Director', deletePastCalls: true });
     expect(res.statusCode).toBe(201);
     expect(res.json()).toEqual({ number: DIRECTOR, label: 'Director', deletedCalls: 1, deletedRecordings: 1 });
     expect(removed).toEqual(['c1/2026/11/director.m4a']);
     expect((await sql`select 1 from calls where number = ${DIRECTOR}`.execute(db)).rows).toHaveLength(0);
     expect((await sql`select 1 from calls where number = '919900011111'`.execute(db)).rows).toHaveLength(1);
     // The audit log keeps who did it, but only the last four digits.
-    const entry = (await sql<{ target_id: string; details: string }>`select target_id, details from audit_logs where action = 'never_record.added'`.execute(db)).rows[0]!;
+    const entry = (await sql<{ target_id: string; details: string }>`select target_id, details from audit_logs where action = 'never_record.added' and company_id = 1`.execute(db)).rows[0]!;
     expect(entry.target_id).toBe('…0000');
     expect(JSON.stringify(entry)).not.toContain(DIRECTOR);
     expect((await superAdmin('GET', '/api/never-record-numbers')).json().items).toEqual([
@@ -130,6 +137,24 @@ describe('the never-record list', () => {
     expect((await superAdmin('DELETE', `/api/never-record-numbers/${DIRECTOR}`)).statusCode).toBe(204);
     expect((await phone(roadsPhone)('POST', '/device/v1/calls', { calls: [call('5', DIRECTOR, '13:00')] })).json().accepted).toBe(1);
     expect((await superAdmin('DELETE', `/api/never-record-numbers/${DIRECTOR}`)).statusCode).toBe(404);
+  });
+});
+
+describe('calls from before pairing (client, 13 November 2026)', () => {
+  it('are refused: only calls from the moment of pairing count, with 10 minutes for a slow phone clock', async () => {
+    // roadsPhone was paired at 09:00 on 12 November.
+    const res = (
+      await phone(roadsPhone)('POST', '/device/v1/calls', {
+        calls: [call('old', '9900033333', '08:00'), call('slack', '9900044444', '08:55'), call('after', '9900055555', '09:30')],
+      })
+    ).json();
+    expect(res.rejected).toEqual([{ deviceCallId: 'old', reason: 'before this phone was paired' }]);
+    expect(res.accepted).toBe(2);
+  });
+
+  it('a newly paired phone is told to send no history', async () => {
+    const res = await app.inject({ method: 'GET', url: '/device/v1/config', headers: { authorization: `Bearer ${roadsPhone}` } });
+    expect(res.json().settings.initialSyncDays).toBe(0);
   });
 });
 

@@ -163,7 +163,7 @@ flowchart LR
 - **Trigger**: a content observer on the call log reacts to new calls within seconds; a WorkManager job every 15 minutes, and one at boot, catches anything missed.
 - **Filter on the phone**: each call log row has a phone-account ID. The app keeps only rows whose ID matches the chosen company SIM. The ID's format differs by brand (subscription ID or SIM serial number), so the matching is tested per brand.
 - **Outbox**: kept rows go into the app's own SQLite database, then are posted in batches of up to 200. The server's unique key is (device, call-log row ID), so a retried batch never duplicates.
-- **Start point**: at pairing, the app syncs the company SIM's calls from the last 7 days (setting), then everything new.
+- **Start point**: only calls from the moment of pairing (client, 13 November 2026: earlier calls appearing after pairing looked like a bug). `INITIAL_SYNC_DAYS` (default 0) can allow a few days of history; the server refuses calls from before pairing, with 10 minutes' slack for a phone clock.
 - **SIM safety**: if the company SIM is no longer present (removed, swapped or moved), sync pauses, nothing is uploaded, and the app asks the employee to pick the SIM again. The server sees the pause through check-ins (M4).
 
 ### 8.3 Ringing time (M1)

@@ -9,8 +9,9 @@ import { normalizeNumber } from '../../lib/phone.js';
 import type { RecordingStore } from '../../lib/storage.js';
 
 /**
- * M12: numbers whose calls are never recorded or kept (client, 12 November 2026). The super admin manages them for
- * the company picked. Phones drop these calls before storing them; the server refuses any that still arrive.
+ * M12: numbers whose calls are never recorded or kept (client, 12 November 2026). The company's admins manage them
+ * (client, 13 November 2026: moved from the super admin), and the super admin can for the company picked; managers
+ * can't (these are admin routes). Phones drop these calls before storing them; the server refuses any that arrive.
  */
 
 /** What phones get instead of the number: SHA-256 of the digits with country code. The app hashes the same way. */
@@ -25,11 +26,7 @@ export async function neverRecordNumbers(db: Kysely<Database>, companyId: number
 export function registerNeverRecordRoutes(app: FastifyInstance, deps: { db: Kysely<Database>; store: RecordingStore | null }) {
   const { db, store } = deps;
 
-  // These are admin routes, so the access hook resolves the company; only the super admin may use them.
-  const superAdminOnly = (role: string) => role === 'super_admin';
-
   app.get('/api/never-record-numbers', async (req, reply) => {
-    if (!superAdminOnly(req.auth!.role)) return sendError(reply, 403, 'FORBIDDEN', 'Only a super admin can see this list');
     const rows = (
       await sql<{ number: string; label: string | null; created_at: Date }>`
         select number, label, created_at from never_record_numbers where company_id = ${req.scope!.companyId} order by number
@@ -40,7 +37,6 @@ export function registerNeverRecordRoutes(app: FastifyInstance, deps: { db: Kyse
   });
 
   app.post('/api/never-record-numbers', async (req, reply) => {
-    if (!superAdminOnly(req.auth!.role)) return sendError(reply, 403, 'FORBIDDEN', 'Only a super admin can change this list');
     const { companyId } = req.scope!;
     const parsed = NeverRecordInput.safeParse(req.body);
     if (!parsed.success) return sendError(reply, 400, 'INVALID_REQUEST', 'Send a number and an optional label');
@@ -85,7 +81,6 @@ export function registerNeverRecordRoutes(app: FastifyInstance, deps: { db: Kyse
   });
 
   app.delete('/api/never-record-numbers/:number', async (req, reply) => {
-    if (!superAdminOnly(req.auth!.role)) return sendError(reply, 403, 'FORBIDDEN', 'Only a super admin can change this list');
     const { companyId } = req.scope!;
     const { number } = normalizeNumber((req.params as { number: string }).number);
     const done = await sql`delete from never_record_numbers where company_id = ${companyId} and number = ${number}`.execute(db);

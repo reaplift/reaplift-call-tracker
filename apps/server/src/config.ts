@@ -5,6 +5,8 @@ const blankToUndefined = (value: unknown) =>
   typeof value === 'string' && value.trim() === '' ? undefined : value;
 const positiveInt = (fallback: number) =>
   z.preprocess(blankToUndefined, z.coerce.number().int().positive().default(fallback));
+const nonNegativeInt = (fallback: number) =>
+  z.preprocess(blankToUndefined, z.coerce.number().int().min(0).default(fallback));
 
 const Env = z.object({
   MODE: z.enum(MODES).default('api'),
@@ -28,7 +30,8 @@ const Env = z.object({
   APK_DIR: z.preprocess(blankToUndefined, z.string().default('./apk')),
   PAIRING_CODE_HOURS: positiveInt(24),
   /** Days of past company-SIM calls a phone sends right after pairing (decision D3). */
-  INITIAL_SYNC_DAYS: positiveInt(7),
+  /** Days of calls from before pairing a phone sends. 0 (client, 13 November 2026): only calls from pairing on. */
+  INITIAL_SYNC_DAYS: nonNegativeInt(0),
   /** The built panel (apps/web/dist) to serve from `/`. Blank locally, where Vite serves the panel. */
   PANEL_DIR: z.preprocess(blankToUndefined, z.string().optional()),
   /** Call recordings (M6) in Cloudflare R2 (D6), or MinIO locally. All four blank means recordings are off. */

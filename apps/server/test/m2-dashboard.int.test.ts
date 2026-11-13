@@ -52,7 +52,8 @@ const card = (periods: DashboardPeriod[], key: DashboardPeriod['key']) => period
 
 beforeAll(async () => {
   ({ db } = await freshDb());
-  app = buildApp({ version: 'test', checkDb: async () => true, db, cookieSecure: false, now: () => clock });
+  // This test needs calls from before pairing (back to 31 October), so it allows 8 days.
+  app = buildApp({ version: 'test', checkDb: async () => true, db, cookieSecure: false, now: () => clock, deviceSettings: { initialSyncDays: 8, syncIntervalMinutes: 15 } });
   await sql`insert into companies (id, name) values (1, 'Country Roads'), (4, 'BSNL')`.execute(db);
   await createUser(db, { email: 'admin@roads.test', name: 'Roads admin', role: 'admin', companyId: 1, password: PASSWORD });
   await createUser(db, { email: 'vikram@roads.test', name: 'Vikram', role: 'manager', companyId: 1, password: PASSWORD });

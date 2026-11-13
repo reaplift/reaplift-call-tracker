@@ -50,7 +50,8 @@ export interface AppDeps {
   recordingStore?: RecordingStore | null;
 }
 
-export const DEFAULT_DEVICE_SETTINGS: DeviceSettings = { initialSyncDays: 7, syncIntervalMinutes: 15 };
+/** Only calls from the moment of pairing (client, 13 November 2026: earlier calls showing up looked like a bug). */
+export const DEFAULT_DEVICE_SETTINGS: DeviceSettings = { initialSyncDays: 0, syncIntervalMinutes: 15 };
 
 /** Builds the HTTP app. Dependencies are passed in so tests can replace them. */
 export function buildApp({

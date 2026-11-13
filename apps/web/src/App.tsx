@@ -79,7 +79,7 @@ export function App() {
         {page === 'calls' && <CallHistory key={callsPreset ? JSON.stringify(callsPreset) : 'all'} preset={callsPreset} />}
         {page === 'reports' && <Reports />}
         {page === 'employees' && <Employees />}
-        {page === 'settings' && <Settings isSuperAdmin={user.role === 'super_admin'} />}
+        {page === 'settings' && <Settings />}
           </>
         )}
       </main>

@@ -13,7 +13,7 @@ interface Item {
  * Company settings for the after-call form: call outcomes (M4) and ready-made notes (the pop-up). Phones pick up
  * changes on their next sync. An item in use is switched off rather than deleted, so old calls keep their outcome.
  */
-export function Settings({ isSuperAdmin = false }: { isSuperAdmin?: boolean }) {
+export function Settings() {
   return (
     <section>
       <h1>Settings</h1>
@@ -34,7 +34,7 @@ export function Settings({ isSuperAdmin = false }: { isSuperAdmin?: boolean }) {
         rename={(id, text) => api.updateNoteTemplate(id, { text })}
         toggle={(id, active) => api.updateNoteTemplate(id, { active })}
       />
-      {isSuperAdmin && <NeverRecord />}
+      <NeverRecord />
       <ApiKeys />
     </section>
   );
@@ -235,7 +235,7 @@ function ApiKeys() {
 }
 
 /**
- * M12 (super admin only): numbers whose calls are never recorded or kept. Phones drop these calls like personal-SIM
+ * M12 (company admins and the super admin): numbers whose calls are never recorded or kept. Phones drop these calls like personal-SIM
  * calls, and the server refuses any that still arrive.
  */
 function NeverRecord() {
@@ -285,7 +285,7 @@ function NeverRecord() {
       <p className="muted">
         Calls to or from these numbers are dropped on the employee's phone and never stored, recorded or shown, as with
         personal-SIM calls. Phones pick up changes within 30 minutes; the server refuses these calls straight away. Only
-        the super admin sees this list.
+        admins see this list; managers and employees don't.
       </p>
       {error && <p className="error" role="alert">{error}</p>}
       {message && <p className="notice" role="status">{message}</p>}

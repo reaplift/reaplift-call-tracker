@@ -57,3 +57,17 @@ The `missing` report carries no reason, so the server can't tell which. Next:
 2. 0.5.1 looks again at calls of the last 3 days marked missing, once, so recordings found after the fix are uploaded.
 3. The client sends from Santhosh's phone: the dialer's recording setting, and the folder path of one call recording in the Files app, with the name blurred if it shows a number.
 4. Matching is tuned from that data, not guessed.
+
+### Root cause found (13 November 2026)
+
+App 0.5.2's reasons arrived from Santhosh's phone: for all 31 calls it checked, **0 audio files** were in the media index around the call. The phones' default dialers, recorded at pairing:
+
+| Employee | Phone | Default dialer | Recordings readable by other apps? |
+| --- | --- | --- | --- |
+| Santhosh | OPPO CPH2721, Android 16 | `com.google.android.dialer` (Google Phone) | No: Google Phone keeps recordings in its private storage (Callyzer can't read them either) |
+| Vishnu | VERTU VTL-202403, Android 15 | `com.truecaller` | No: Truecaller dropped call recording in 2022 |
+| Prajwal | TECNO LH8n, Android 14 | `com.sh.smart.caller` (TECNO's dialer) | Expected yes; phone still on app 0.3.0 |
+| Prathap | Samsung SM-J810G, Android 10 | `com.samsung.android.dialer` | Expected yes; not updated yet |
+| Padma | Xiaomi M2006C3LII, Android 10 | `com.android.contacts` (MIUI dialer) | Expected yes; not updated yet |
+
+The one upload so far (call 796, Santhosh, 13 November 11:31) matched with score 100, but the file was a 4 KB MP3: a fraction of a second, not a real recording. Matching works when a file exists. Next: each phone uses its brand's own dialer with auto-record on; the app's Status tab should warn when the default dialer is Google Phone or Truecaller (M6 task 6.5).

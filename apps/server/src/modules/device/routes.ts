@@ -15,6 +15,9 @@ import { audit } from '../../lib/audit.js';
 import { createSessionToken, hashToken } from '../../lib/auth.js';
 import { sendError } from '../../lib/errors.js';
 import { neverRecordNumbers, numberHash } from '../never-record/routes.js';
+
+/** A phone's clock may run a little behind the server's: calls this long before pairing still count. */
+export const PAIRING_SLACK_MS = 10 * 60_000;
 import { normalizeNumber } from '../../lib/phone.js';
 import { findLiveCode } from '../employees/pairing.js';
 
@@ -150,8 +153,9 @@ export function registerDeviceRoutes(
     if (!parsed.success) return sendError(reply, 400, 'INVALID_REQUEST', 'Send { calls: [...] } with 1 to 200 calls');
     const device = req.device!;
     const at = now();
-    // The phone sends at most initialSyncDays of history before pairing, plus a day for clock drift.
-    const earliest = device.pairedAt.getTime() - (settings.initialSyncDays + 1) * 86_400_000;
+    // The phone sends calls from pairing on (initialSyncDays is 0 by default), with 10 minutes' slack for a phone
+    // clock that runs a little behind the server's.
+    const earliest = device.pairedAt.getTime() - settings.initialSyncDays * 86_400_000 - PAIRING_SLACK_MS;
     const latest = at.getTime() + 86_400_000;
 
     const result: DeviceCallBatchResult = { accepted: 0, duplicates: 0, rejected: [] };
@@ -171,7 +175,7 @@ export function registerDeviceRoutes(
         continue;
       }
       if (started < earliest) {
-        result.rejected.push({ deviceCallId: call.deviceCallId, reason: 'older than the pairing window' });
+        result.rejected.push({ deviceCallId: call.deviceCallId, reason: 'before this phone was paired' });
         continue;
       }
       const { number, kind } = normalizeNumber(call.number);

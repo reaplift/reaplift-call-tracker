@@ -8,7 +8,7 @@
 
 ## Outcome
 
-ReapLift's super admin writes a few fixed WhatsApp messages for each company in the panel, for example "Welcome", "Follow-up" and "Not interested, but keep in touch". After a call, or from the app's call history, the employee taps **WhatsApp**, picks one, and sees the message with the client's name already filled in. If the phone doesn't have a name for the number, the app asks the employee to type one. The employee checks the message and taps **Send**. WhatsApp opens on the client's chat with the text ready, and the employee presses WhatsApp's own send button. The panel shows which template was sent to which client, by whom and when.
+A company's admin writes a few fixed WhatsApp messages in the panel, for example "Welcome", "Follow-up" and "Not interested, but keep in touch". After a call, or from the app's call history, the employee taps **WhatsApp**, picks one, and sees the message with the client's name already filled in. If the phone doesn't have a name for the number, the app asks the employee to type one. The employee checks the message and taps **Send**. WhatsApp opens on the client's chat with the text ready, and the employee presses WhatsApp's own send button. The panel shows which template was sent to which client, by whom and when.
 
 ## Design (to approve)
 
@@ -39,7 +39,7 @@ The employee can't change the template's own words, only fill the blanks. A blan
 **Steps in the app:** pick template → fill the missing values (the name is pre-filled when known) → review the full message → **Send on WhatsApp** → WhatsApp opens with the text → the employee presses send in WhatsApp → back in Callit, the send is saved on the phone and uploaded with the next sync (it works offline, like comments).
 
 **Panel:**
-- **Settings → WhatsApp message templates (super admin, for the company picked):** list (title, text, on/off, last changed), add and edit with buttons that insert each automatic blank, a way to add a custom blank, and a live preview with sample values. Company admins and managers see the list but can't change it.
+- **Settings → WhatsApp message templates (company admins; the super admin for the company picked):** list (title, text, on/off, last changed), add and edit with buttons that insert each automatic blank, a way to add a custom blank, and a live preview with sample values. Managers see the list but can't change it.
 - **Call history:** a "WhatsApp" mark on the call with the template's title, and the message in the call's details.
 
 ## Flow diagram
@@ -111,7 +111,7 @@ Each task ships with its tests: placeholder filling (missing values, braces in t
 - Migration `message_sends`: `id`, `company_id`, `employee_id`, `device_id`, `device_send_id` (unique with device, so a retry is not saved twice), `template_id null`, `number`, `call_id null`, `body` (the text as sent), `app` (`whatsapp` or `whatsapp_business`), `opened_at`, `synced_at`.
 - `GET /device/v1/config` adds `messageTemplates: [{ id, title, body }]`.
 - `POST /device/v1/message-sends`: a batch from the phone's outbox; `{ accepted, duplicates }`.
-- `GET /api/message-templates` (admin, manager: read only); `POST, PATCH /api/message-templates` (super admin, for the company picked).
+- `GET /api/message-templates` (admins; managers read only); `POST, PATCH /api/message-templates` (admins, and the super admin for the company picked).
 - `GET /api/calls` adds `whatsapp: [{ templateTitle, sentAt }]`.
 - Error codes: `TEMPLATE_EXISTS` (409), `TEMPLATE_BLANK_INVALID` (400: a blank name must be letters, digits and underscores, for example `{{site_name}}`).
 
@@ -119,7 +119,7 @@ Each task ships with its tests: placeholder filling (missing values, braces in t
 
 | | Question | Decision |
 | --- | --- | --- |
-| W1 | Who writes templates? | **The super admin** (ReapLift), for each company. Company admins and employees can't change them |
+| W1 | Who writes templates? | **The company's admins** (client, 13 November 2026, changed from the super admin), and the super admin for any company. Managers and employees can't change them |
 | W2 | Employee's WhatsApp or a central number through Meta's API? | **The employee's WhatsApp** |
 | W3 | Must employees use WhatsApp Business on the company SIM? | **Not required for now.** The app opens WhatsApp Business if installed, otherwise WhatsApp |
 | W4 | Can the employee change the wording? | **No, only fill the blanks.** Blanks the app can't fill (for example a new client's name) the employee must fill |
